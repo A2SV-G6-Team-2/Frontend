@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="20"
+   height="20"
+   viewBox="0 0 20 20"
+   fill="none"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="Vector-4.svg"
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="36.85"
+     inkscape:cx="10"
+     inkscape:cy="10.379919"
+     inkscape:window-width="1920"
+     inkscape:window-height="948"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <path
+     d="M 13,9.9999996 C 13,11.65575 11.65575,13 9.9999999,13 8.3442501,13 7.0000001,11.65575 7.0000001,9.9999996 c 0,-1.6557496 1.34425,-2.9999997 2.9999998,-2.9999997 C 11.65575,7 13,8.34425 13,9.9999996 v 0"
+     stroke="#FFFFFF"
+     stroke-width="2"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path1-5" />
+  <path
+     d="M8.325 2.317C8.751 0.561 11.249 0.561 11.675 2.317C11.8046 2.85206 12.182 3.29302 12.6907 3.50375C13.1993 3.71447 13.7779 3.6696 14.248 3.383C15.791 2.443 17.558 4.209 16.618 5.753C16.3318 6.22285 16.2871 6.80108 16.4975 7.30938C16.708 7.81768 17.1484 8.195 17.683 8.325C19.439 8.751 19.439 11.249 17.683 11.675C17.1479 11.8046 16.707 12.182 16.4963 12.6907C16.2855 13.1993 16.3304 13.7779 16.617 14.248C17.557 15.791 15.791 17.558 14.247 16.618C13.7771 16.3318 13.1989 16.2871 12.6906 16.4975C12.1823 16.708 11.805 17.1484 11.675 17.683C11.249 19.439 8.751 19.439 8.325 17.683C8.19536 17.1479 7.81797 16.707 7.30935 16.4963C6.80073 16.2855 6.22206 16.3304 5.752 16.617C4.209 17.557 2.442 15.791 3.382 14.247C3.66819 13.7771 3.71295 13.1989 3.50247 12.6906C3.292 12.1823 2.85157 11.805 2.317 11.675C0.561 11.249 0.561 8.751 2.317 8.325C2.85206 8.19536 3.29302 7.81797 3.50375 7.30935C3.71447 6.80073 3.6696 6.22206 3.383 5.752C2.443 4.209 4.209 2.442 5.753 3.382C6.749 3.99 8.049 3.452 8.325 2.317V2.317"
+     stroke="#FFFFFF"
+     stroke-width="2"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path1" />
+</svg>
