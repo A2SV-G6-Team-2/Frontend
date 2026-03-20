@@ -3,25 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
-
-
-function Icon({ src, className = "" }: { src: string, className?: string }) {
-    return (
-        <div
-            className={`w-5 h-5 bg-current ${className}`}
-            style={{
-                maskImage: `url(${src})`,
-                WebkitMaskImage: `url(${src})`,
-                maskSize: 'contain',
-                WebkitMaskSize: 'contain',
-                maskRepeat: 'no-repeat',
-                WebkitMaskRepeat: 'no-repeat',
-                maskPosition: 'center',
-                WebkitMaskPosition: 'center',
-            }}
-        />
-    );
-}
+import Icon from './icon'
 
 function NavElement({ title, icon, isActive = false, link, onClick }: { title: string, icon: string, isActive?: boolean, link: string, onClick?: () => void }) {
     if (isActive) {
