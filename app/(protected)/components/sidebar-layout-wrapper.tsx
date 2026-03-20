@@ -38,7 +38,7 @@ export default function SidebarLayoutWrapper({
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             {/* Main content wrapper */}
-            <div className="flex-1 min-h-screen p-6 lg:p-10 bg-graybg shadow-[inset_7px_0px_7px_-3px_rgba(0,0,0,0.05)] overflow-x-hidden">
+            <div className="flex-1 min-h-screen p-10 bg-graybg shadow-[inset_7px_0px_7px_-3px_rgba(0,0,0,0.05)] overflow-x-hidden">
                 {children}
             </div>
 
