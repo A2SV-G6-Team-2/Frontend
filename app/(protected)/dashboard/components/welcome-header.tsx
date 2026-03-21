@@ -1,4 +1,4 @@
-import Icon from '../../components/icon';
+import Icon from '../../../../components/icon';
 
 export default function WelcomeHeader({ username }: { username: string }) {
     return (
