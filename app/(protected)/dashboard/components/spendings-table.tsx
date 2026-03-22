@@ -4,9 +4,10 @@ interface SpendingsTableProps {
     activePeriod: SpendingPeriod;
     setActivePeriod: (period: SpendingPeriod) => void;
     currentData: SpendingItem[];
+    isLoading?: boolean;
 }
 
-export default function SpendingsTable({ activePeriod, setActivePeriod, currentData }: SpendingsTableProps) {
+export default function SpendingsTable({ activePeriod, setActivePeriod, currentData, isLoading }: SpendingsTableProps) {
     return (
         <div className="bg-white w-full rounded-xl shadow mt-5 p-4">
             {/* Header Section */}
@@ -32,29 +33,48 @@ export default function SpendingsTable({ activePeriod, setActivePeriod, currentD
             </div>
 
             {/* Spendings Table */}
-            <div className="w-full overflow-x-auto max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
+            <div className="w-full overflow-x-auto max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 min-h-[150px]">
                 <table className="w-full border-separate border-spacing-0 text-left text-sm">
                     <thead className="sticky top-0 z-10">
                         <tr className="bg-gray-50">
-                            <th className="rounded-l-xl px-6 py-4 font-medium text-gray-500">Person</th>
+                            <th className="rounded-l-xl px-6 py-4 font-medium text-gray-500">Note</th>
                             <th className="px-6 py-4 font-medium text-gray-500">Type</th>
                             <th className="px-6 py-4 font-medium text-gray-500">Date</th>
                             <th className="rounded-r-xl px-6 py-4 font-medium text-gray-500">Amount</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {currentData.map((item, index) => (
-                            <tr key={index}>
-                                <td className="border-gray-100 border-b px-6 py-4 font-medium text-gray-900">{item.person}</td>
-                                <td className="border-gray-100 border-b px-6 py-4">
-                                    <span className={`inline-flex items-center justify-center rounded-full px-4 py-1.5 text-xs font-medium ${item.typeColor}`}>
-                                        {item.type}
-                                    </span>
+                    <tbody className="relative">
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
+                                    <div className="flex items-center justify-center space-x-2">
+                                        <div className="h-2 w-2 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]"></div>
+                                        <div className="h-2 w-2 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]"></div>
+                                        <div className="h-2 w-2 animate-bounce rounded-full bg-accent"></div>
+                                    </div>
+                                    <span className="mt-2 block text-xs font-medium">Loading spendings...</span>
                                 </td>
-                                <td className="border-gray-100 border-b px-6 py-4 text-gray-800">{item.date}</td>
-                                <td className="border-gray-100 border-b px-6 py-4 font-medium text-gray-900">{item.amount}</td>
                             </tr>
-                        ))}
+                        ) : currentData.length === 0 ? (
+                            <tr>
+                                <td colSpan={4} className="px-6 py-10 text-center text-gray-400 italic">
+                                    No spendings found for this period.
+                                </td>
+                            </tr>
+                        ) : (
+                            currentData.map((item, index) => (
+                                <tr key={index}>
+                                    <td className="border-gray-100 border-b px-6 py-4 font-medium text-gray-900">{item.note}</td>
+                                    <td className="border-gray-100 border-b px-6 py-4">
+                                        <span className={`inline-flex items-center justify-center rounded-full px-4 py-1.5 text-xs font-medium ${item.typeColor}`}>
+                                            {item.type}
+                                        </span>
+                                    </td>
+                                    <td className="border-gray-100 border-b px-6 py-4 text-gray-800">{item.date}</td>
+                                    <td className="border-gray-100 border-b px-6 py-4 font-medium text-gray-900">{item.amount}</td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
