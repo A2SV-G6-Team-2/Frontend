@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
-import Icon from './icon'
+import Icon from '../../../components/icon'
 
 function NavElement({ title, icon, isActive = false, link, onClick }: { title: string, icon: string, isActive?: boolean, link: string, onClick?: () => void }) {
     if (isActive) {
