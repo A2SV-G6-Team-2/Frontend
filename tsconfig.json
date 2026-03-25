@@ -7,6 +7,7 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
+    "noImplicitAny": true,
     "module": "esnext",
     "moduleResolution": "bundler",
     "target": "ES2017",
@@ -66,4 +67,3 @@
   ],
   "exclude": ["node_modules"]
 }
-
