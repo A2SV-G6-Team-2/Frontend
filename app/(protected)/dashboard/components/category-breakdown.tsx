@@ -1,9 +1,12 @@
 "use client";
 
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import type { SpendingPeriod } from '../types';
-import { categoryBreakdownData } from '../constants';
+import { useExpenses } from '@/lib/api/hooks/useExpenses';
+import { useCategories } from '@/lib/api/hooks/useCategories';
+import { useProfile } from '@/lib/api/hooks/useUser';
+import { getCategoryColor } from '@/lib/utils/colors';
 
 interface CategoryBreakdownProps {
   activePeriod: SpendingPeriod;
@@ -71,12 +74,75 @@ const renderCustomizedLabel = (props: any) => {
 };
 
 const CategoryBreakdown = memo(({ activePeriod, setActivePeriod, className = "" }: CategoryBreakdownProps) => {
-  const currentBreakdown = categoryBreakdownData[activePeriod];
+  const { data: profile } = useProfile();
+  const { data: categories } = useCategories();
   
-  const chartData = currentBreakdown.items.map(item => ({
-    ...item,
-    value: (currentBreakdown.total * item.percentage) / 100
-  }));
+  const now = new Date();
+  const toLocalISO = (date: Date) => {
+      const offset = date.getTimezoneOffset();
+      const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+      return localDate.toISOString().split('T')[0];
+  };
+
+  const dateRange = useMemo(() => {
+      const end = toLocalISO(now);
+      let start = end;
+
+      if (activePeriod === 'Weekly') {
+          const startOfWeek = new Date(now);
+          const day = startOfWeek.getDay();
+          const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+          startOfWeek.setDate(diff);
+          start = toLocalISO(startOfWeek);
+      } else if (activePeriod === 'Monthly') {
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          start = toLocalISO(startOfMonth);
+      }
+
+      return { from_date: start, to_date: end };
+  }, [activePeriod]);
+
+  const { data: expenses, isLoading } = useExpenses(dateRange);
+
+  const { chartData, totalAmount } = useMemo(() => {
+    if (!expenses) return { chartData: [], totalAmount: 0 };
+
+    const categoryMap = new Map<string, number>();
+    let total = 0;
+
+    expenses.forEach(exp => {
+      const catId = exp.category_id || 'uncategorized';
+      const amount = exp.amount || 0;
+      categoryMap.set(catId, (categoryMap.get(catId) || 0) + amount);
+      total += amount;
+    });
+
+    const data = Array.from(categoryMap.entries()).map(([catId, amount]) => {
+      const category = categories?.find(c => c.id === catId);
+      const name = category?.name || (catId === 'uncategorized' ? 'Other' : 'Unknown');
+      const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
+      const colorInfo = getCategoryColor(name);
+      
+      return {
+        name,
+        value: amount,
+        percentage,
+        color: colorInfo.hex
+      };
+    }).sort((a, b) => b.value - a.value);
+
+    return { chartData: data, totalAmount: total };
+  }, [expenses, categories]);
+
+  const formatCurrency = (val: number) => {
+    const currency = profile?.default_currency || 'ETB';
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(val);
+  };
 
   return (
     <div className={`bg-white w-full rounded-xl shadow mt-5 p-4 flex flex-col min-h-[450px] ${className}`}>
@@ -104,33 +170,45 @@ const CategoryBreakdown = memo(({ activePeriod, setActivePeriod, className = "" 
       {/* Chart Area */}
       <div className="relative flex-1 w-full min-h-[350px]">
         {/* Center Total Text */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-          <span className="text-xl font-bold text-gray-900">${currentBreakdown.total}</span>
-        </div>
+        {!isLoading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 translate-y-[-10px]">
+            <span className="text-xl font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
+          </div>
+        )}
 
         <div className="w-full h-full min-h-[350px]">
-            <ResponsiveContainer width="100%" height="100%" minHeight={350}>
-                <PieChart>
-                    <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="35%"
-                    outerRadius="65%"
-                    paddingAngle={0}
-                    dataKey="value"
-                    stroke="none"
-                    labelLine={false}
-                    label={renderCustomizedLabel}
-                    animationDuration={500}
-                    animationBegin={0}
-                    >
-                    {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                    </Pie>
-                </PieChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="flex h-full w-full items-center justify-center text-gray-400 italic">
+                Loading breakdown...
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="flex h-full w-full items-center justify-center text-gray-400 italic">
+                No data for this period.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%" minHeight={350}>
+                  <PieChart>
+                      <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius="35%"
+                      outerRadius="65%"
+                      paddingAngle={0}
+                      dataKey="value"
+                      stroke="none"
+                      labelLine={false}
+                      label={renderCustomizedLabel}
+                      animationDuration={500}
+                      animationBegin={0}
+                      >
+                      {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                      </Pie>
+                  </PieChart>
+              </ResponsiveContainer>
+            )}
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 export type SpendingPeriod = 'Daily' | 'Weekly' | 'Monthly';
 
 export interface SpendingItem {
-    person: string;
+    note: string;
     type: string;
     date: string;
     amount: string;
