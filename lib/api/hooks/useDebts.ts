@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../client';
-import { components } from '../schema';
+import type { components } from '../schema';
 
 type Debt = components['schemas']['Debt'];
 type CreateDebtInput = components['schemas']['CreateDebtInput'];
@@ -53,19 +53,40 @@ export const useCreateDebt = () => {
   });
 };
 
-export const useUpdateDebt = (id: string) => {
-  const queryClient = useQueryClient();
+// export const useUpdateDebt = (id: string) => {
+//   const queryClient = useQueryClient();
+
+//   return useMutation({
+//     mutationFn: async (debt: UpdateDebtInput) => {
+//       const { data } = await apiClient.put<Debt>(`/debts/${id}`, debt);
+//       return data;
+//     },
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({ queryKey: ['debts'] });
+//     },
+//   });
+// };
+
+export const useUpdateDebt = () => {
+  const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (debt: UpdateDebtInput) => {
-      const { data } = await apiClient.put<Debt>(`/debts/${id}`, debt);
-      return data;
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string
+      data: UpdateDebtInput
+    }) => {
+      const { data: res } = await apiClient.put(`/debts/${id}`, data)
+      return res
     },
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['debts'] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] })
     },
-  });
-};
+  })
+}
 
 export const useMarkDebtPaid = () => {
   const queryClient = useQueryClient();
@@ -80,3 +101,16 @@ export const useMarkDebtPaid = () => {
     },
   });
 };
+
+export function useDeleteDebt() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient.delete(`/debts/${id}`),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["debts"] })
+    }
+  })
+}
