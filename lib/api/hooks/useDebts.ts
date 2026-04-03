@@ -1,17 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../client';
-import { components } from '../schema';
+import type { components } from '../schema';
 
 type Debt = components['schemas']['Debt'];
 type CreateDebtInput = components['schemas']['CreateDebtInput'];
 type UpdateDebtInput = components['schemas']['UpdateDebtInput'];
 
+
+type ApiEnvelope<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+  meta?: unknown;
+};
+
+function debtsListFromResponse(body: ApiEnvelope<{ items: Debt[] }>): Debt[] {
+  const items = body?.data?.items;
+  return Array.isArray(items) ? items : [];
+}
+
+function debtFromResponse(body: ApiEnvelope<Debt>): Debt {
+  return body.data;
+}
+
 export const useDebts = () => {
   return useQuery({
     queryKey: ['debts'],
     queryFn: async () => {
-      const { data } = await apiClient.get<Debt[]>('/debts');
-      return data;
+      const { data: body } = await apiClient.get<ApiEnvelope<{ items: Debt[] }>>('/debts');
+      return debtsListFromResponse(body);
     },
   });
 };
@@ -20,10 +37,10 @@ export const useUpcomingDebts = (days: number = 7) => {
   return useQuery({
     queryKey: ['debts', 'upcoming', days],
     queryFn: async () => {
-      const { data } = await apiClient.get<Debt[]>('/debts/upcoming', {
+      const { data: body } = await apiClient.get<ApiEnvelope<{ items: Debt[] }>>('/debts/upcoming', {
         params: { days },
       });
-      return data;
+      return debtsListFromResponse(body);
     },
   });
 };
@@ -32,8 +49,8 @@ export const useDebt = (id: string) => {
   return useQuery({
     queryKey: ['debts', id],
     queryFn: async () => {
-      const { data } = await apiClient.get<Debt>(`/debts/${id}`);
-      return data;
+      const { data: body } = await apiClient.get<ApiEnvelope<Debt>>(`/debts/${id}`);
+      return debtFromResponse(body);
     },
     enabled: !!id,
   });
@@ -44,8 +61,8 @@ export const useCreateDebt = () => {
 
   return useMutation({
     mutationFn: async (debt: CreateDebtInput) => {
-      const { data } = await apiClient.post<Debt>('/debts', debt);
-      return data;
+      const { data: body } = await apiClient.post<ApiEnvelope<Debt>>('/debts', debt);
+      return debtFromResponse(body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] });
@@ -58,8 +75,8 @@ export const useUpdateDebt = (id: string) => {
 
   return useMutation({
     mutationFn: async (debt: UpdateDebtInput) => {
-      const { data } = await apiClient.put<Debt>(`/debts/${id}`, debt);
-      return data;
+      const { data: body } = await apiClient.put<ApiEnvelope<Debt>>(`/debts/${id}`, debt);
+      return debtFromResponse(body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] });
@@ -72,8 +89,8 @@ export const useMarkDebtPaid = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data } = await apiClient.patch<Debt>(`/debts/${id}/pay`);
-      return data;
+      const { data: body } = await apiClient.patch<ApiEnvelope<Debt>>(`/debts/${id}/pay`);
+      return debtFromResponse(body);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] });
