@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Icon from '../../components/icon';
+import Icon from '@/components/icon';
 import { useCreateExpense } from '@/lib/api/hooks/useExpenses';
 import { useCreateDebt } from '@/lib/api/hooks/useDebts';
 import { useCategories } from '@/lib/api/hooks/useCategories';
