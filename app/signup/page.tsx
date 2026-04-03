@@ -6,6 +6,114 @@ import Link from "next/link";
 export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { registerUser, loginUser } from "@/lib/api/auth";
+import { setTokens, setUser } from "@/lib/auth/token";
+import type { AxiosError } from "axios";
+
+interface ApiErrorResponse {
+  success: boolean;
+  message: string;
+  errors: string[] | null;
+}
+
+export default function Signup() {
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+
+  // Client-side password validation hints
+  const passwordChecks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+
+  const passwordIsValid = Object.values(passwordChecks).every(Boolean);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setFieldErrors([]);
+
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    if (!passwordIsValid) {
+      setError("Please fix the password requirements below.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Step 1: Register
+      const registerResult = await registerUser({ name, email, password });
+
+      if (registerResult.success) {
+        // Step 2: Auto-login after successful registration
+        try {
+          const loginResult = await loginUser({ email, password });
+
+          if (loginResult.success && loginResult.data) {
+            setTokens(loginResult.data.access_token, loginResult.data.refresh_token);
+            setUser(loginResult.data.user);
+            router.push("/dashboard");
+            return;
+          }
+        } catch {
+          // If auto-login fails, redirect to login page
+          router.push("/login");
+          return;
+        }
+
+        // Fallback: redirect to login
+        router.push("/login");
+      } else {
+        setError(registerResult.message || "Registration failed.");
+        if (registerResult.errors) {
+          setFieldErrors(registerResult.errors);
+        }
+      }
+    } catch (err) {
+      const axiosError = err as AxiosError<ApiErrorResponse>;
+      if (axiosError.response) {
+        const { status, data } = axiosError.response;
+        if (status === 409) {
+          setError("An account with this email already exists.");
+        } else if (status === 400) {
+          if (data?.errors && data.errors.length > 0) {
+            setFieldErrors(data.errors);
+            setError("Please fix the errors below.");
+          } else {
+            setError(data?.message || "Invalid input. Please check your details.");
+          }
+        } else if (data?.message) {
+          setError(data.message);
+        } else {
+          setError("Something went wrong. Please try again.");
+        }
+      } else if (axiosError.request) {
+        setError("Cannot reach the server. Please check your connection.");
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] flex flex-col">
@@ -32,145 +140,190 @@ export default function Signup() {
             Join thousands saving more today.
           </p>
 
-          {/* Full Name */}
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Full Name
-            </label>
-            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 gap-2 focus-within:border-[#3C12E7] transition-colors">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Enter your full name"
-                className="flex-1 text-sm outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
-              />
+          {/* Error messages */}
+          {error && (
+            <div className="mb-5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <div className="flex items-start gap-2.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+                  <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                <div>
+                  <p className="text-sm text-red-600">{error}</p>
+                  {fieldErrors.length > 0 && (
+                    <ul className="mt-1.5 text-xs text-red-500 list-disc pl-4 space-y-0.5">
+                      {fieldErrors.map((fe, i) => (
+                        <li key={i}>{fe}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Email Address */}
-          <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Email Address
-            </label>
-            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 gap-2 focus-within:border-[#3C12E7] transition-colors">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="4" /><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
-              </svg>
-              <input
-                type="email"
-                placeholder="your@email.com"
-                className="flex-1 text-sm outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
-              />
+          <form onSubmit={handleSubmit}>
+            {/* Full Name */}
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Full Name
+              </label>
+              <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 gap-2 focus-within:border-[#3C12E7] transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                </svg>
+                <input
+                  id="signup-name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="flex-1 text-sm outline-none text-gray-700 placeholder:text-gray-400 bg-transparent disabled:opacity-50"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Password */}
-          <div className="mb-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Password
-            </label>
-            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 gap-2 focus-within:border-[#3C12E7] transition-colors">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Create a secure password"
-                className="flex-1 text-sm outline-none text-gray-700 placeholder:text-gray-400 bg-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                {showPassword ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                )}
-              </button>
+            {/* Email Address */}
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Email Address
+              </label>
+              <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 gap-2 focus-within:border-[#3C12E7] transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4" /><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
+                </svg>
+                <input
+                  id="signup-email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="flex-1 text-sm outline-none text-gray-700 placeholder:text-gray-400 bg-transparent disabled:opacity-50"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Password hint */}
-          <p className="text-[11px] text-gray-400 mb-5 flex items-center gap-1.5 px-1">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            Must include 8+ characters, letters &amp; numbers
-          </p>
+            {/* Password */}
+            <div className="mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Password
+              </label>
+              <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 gap-2 focus-within:border-[#3C12E7] transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <input
+                  id="signup-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a secure password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="flex-1 text-sm outline-none text-gray-700 placeholder:text-gray-400 bg-transparent disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
 
-          {/* Terms checkbox */}
-          <div className="flex items-start gap-2.5 mb-6">
-            <input
-              id="agree-terms"
-              type="checkbox"
-              checked={agreedToTerms}
-              onChange={(e) => setAgreedToTerms(e.target.checked)}
-              className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-[#3C12E7] cursor-pointer"
-            />
-            <label htmlFor="agree-terms" className="text-sm text-gray-500 cursor-pointer select-none leading-snug">
-              I agree to the{" "}
-              <Link href="/terms" className="text-[#3C12E7] font-semibold hover:underline">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-[#3C12E7] font-semibold hover:underline">
-                Privacy Policy
-              </Link>
-              .
-            </label>
-          </div>
+            {/* Password requirements */}
+            {password.length > 0 && (
+              <div className="mb-4 px-1 space-y-1">
+                {[
+                  { check: passwordChecks.length, label: "At least 8 characters" },
+                  { check: passwordChecks.uppercase, label: "One uppercase letter" },
+                  { check: passwordChecks.lowercase, label: "One lowercase letter" },
+                  { check: passwordChecks.number, label: "One number" },
+                  { check: passwordChecks.special, label: "One special character" },
+                ].map((rule) => (
+                  <div key={rule.label} className="flex items-center gap-1.5 text-[11px]">
+                    {rule.check ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="6" />
+                      </svg>
+                    )}
+                    <span className={rule.check ? "text-green-600" : "text-gray-400"}>
+                      {rule.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* Sign Up Button */}
-          <button
-            type="submit"
-            className="w-full py-3.5 rounded-xl text-white text-sm font-bold tracking-wide transition-opacity hover:opacity-90 mb-5"
-            style={{ background: "#3C12E7" }}
-          >
-            Sign Up
-          </button>
+            {/* Static hint when password is empty */}
+            {password.length === 0 && (
+              <p className="text-[11px] text-gray-400 mb-5 flex items-center gap-1.5 px-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Must include 8+ characters, uppercase, lowercase, number &amp; special character
+              </p>
+            )}
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">or quick sign up</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
+            {/* Terms checkbox */}
+            <div className="flex items-start gap-2.5 mb-6">
+              <input
+                id="agree-terms"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-[#3C12E7] cursor-pointer"
+              />
+              <label htmlFor="agree-terms" className="text-sm text-gray-500 cursor-pointer select-none leading-snug">
+                I agree to the{" "}
+                <Link href="/terms" className="text-[#3C12E7] font-semibold hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-[#3C12E7] font-semibold hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </label>
+            </div>
 
-          {/* OAuth Buttons */}
-          <div className="flex gap-3 mb-6">
-            {/* Google */}
+            {/* Sign Up Button */}
             <button
-              type="button"
-              className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3.5 rounded-xl text-white text-sm font-bold tracking-wide transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-5"
+              style={{ background: "#3C12E7" }}
             >
-              <svg width="16" height="16" viewBox="0 0 18 18">
-                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4" />
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853" />
-                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
-              </svg>
-              Google
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Creating account…
+                </>
+              ) : (
+                "Sign Up"
+              )}
             </button>
-
-            {/* GitHub */}
-            <button
-              type="button"
-              className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-              GitHub
-            </button>
-          </div>
+          </form>
 
           {/* Already have account */}
           <p className="text-center text-sm text-gray-500">
@@ -197,5 +350,3 @@ export default function Signup() {
     </div>
   );
 }
-
-
