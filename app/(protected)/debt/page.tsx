@@ -3,97 +3,157 @@
 import { useState ,  useRef, useEffect } from "react"
 import { Bell, Plus, Pencil, Trash2, Wallet, CreditCard } from "lucide-react"
 
+import {
+  useDebts,
+  useCreateDebt,
+  useUpdateDebt,
+  useDeleteDebt
+} from "@/lib/api/hooks/useDebts"
+
 type Debt = {
-  id: number
+  id: string
   name: string
   dueDate: string
-  status: "PENDING" | "PAID"
+  status: "PENDING" | "PAID" |"OVERDUE"
   amount: number
   type: "owe" | "owed"
+  reminder?: boolean
 }
 
 export default function DebtPage() {
-
-  const [debts, setDebts] = useState<Debt[]>([])
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null)
+
+  /** API */
+  const { data: debts = [] } = useDebts()
+  const createDebt = useCreateDebt()
+  const updateDebt = useUpdateDebt()
+  const deleteDebt = useDeleteDebt()
+
+  /** MAP API → UI */
+  const mappedDebts: Debt[] = debts.map((d: any) => ({
+    id: d.id,
+    name: d.peer_name,
+    dueDate: d.due_date,
+    status:
+      d.status === "paid"
+        ? "PAID"
+        : d.status === "overdue"
+        ? "OVERDUE"
+        : "PENDING",    
+    amount: d.amount,
+    type: d.type === "lent" ? "owed" : "owe",
+    reminder: d.reminder_enabled
+  }))
+
+const reminderNotifications = mappedDebts
+  .filter(d => {
+    if (!d.reminder) return false
+
+    const today = new Date()
+    const due = new Date(d.dueDate)
+
+    const diff = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+
+    return diff <= 1 && d.status !== "PAID"
+  })
+  .map(d => ({
+    message: `${d.name} debt is due ${d.dueDate}`,
+    read: false
+  }))
+  
+  /** STATE */
   const [showAdd, setShowAdd] = useState(false)
   const [tab, setTab] = useState<"owe" | "owed">("owe")
+
   type Notification = {
-  message: string
-  read: boolean
-}
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const unreadCount = notifications.filter(n => !n.read).length
-  const [showNotif, setShowNotif] = useState(false)
+    message: string
+    read: boolean
+  }
+
+const notifications = reminderNotifications
+const unreadCount = notifications.length
+const [showNotif, setShowNotif] = useState(false)
+
   const [newDebt, setNewDebt] = useState({
     name: "",
     dueDate: "",
-    amount: ""
+    amount: "",
+    reminder: false
   })
-  const notifRef = useRef<HTMLDivElement | null>(null) 
+
+  const notifRef = useRef<HTMLDivElement | null>(null)
+
+  /** CLICK OUTSIDE */
   useEffect(() => {
-  function handleClickOutside(event: MouseEvent) {
-    if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-      setShowNotif(false)
-
-      setNotifications([])
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotif(false)
+      }
     }
-  }
 
-  document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside)
-  }
-}, []) 
-  // calculations
-  const totalLent = debts
+  /** CALCULATIONS */
+  const totalLent = mappedDebts
     .filter(d => d.type === "owed")
     .reduce((s, d) => s + d.amount, 0)
 
-  const totalBorrowed = debts
+  const totalBorrowed = mappedDebts
     .filter(d => d.type === "owe")
     .reduce((s, d) => s + d.amount, 0)
 
-  const peopleOweYou = debts.filter(d => d.type === "owed").length
-  const youOwe = debts.filter(d => d.type === "owe").length
+  const peopleOweYou = mappedDebts.filter(d => d.type === "owed").length
+  const youOwe = mappedDebts.filter(d => d.type === "owe").length
 
-  const filteredDebts = debts.filter(d => d.type === tab)
+  const filteredDebts = mappedDebts.filter(d => d.type === tab)
 
-  function handleDelete(id: number) {
-    const person = debts.find(d => d.id === id)?.name || "Unknown"
-    setDebts(prev => prev.filter(d => d.id !== id))
-    addNotification(`Deleted debt for ${person}`)
+ 
+  /** ACTIONS */
+
+  function handleDelete(id: string) {
+    const person = mappedDebts.find(d => d.id === id)?.name || "Unknown"
+    deleteDebt.mutate(id)
   }
 
   function handleSaveEdit() {
     if (!editingDebt) return
-    setDebts(prev =>
-      prev.map(d => d.id === editingDebt.id ? editingDebt : d)
-    )
-    addNotification(`Updated debt for ${editingDebt.name}`)
+
+    updateDebt.mutate({
+      id: editingDebt.id,
+      data: {
+        peer_name: editingDebt.name,
+        amount: editingDebt.amount,
+        due_date: editingDebt.dueDate
+      }
+    })
+
     setEditingDebt(null)
-  }
-  function addNotification(message: string) {
-  setNotifications(prev => [{message, read: false }, ...prev])
   }
 
   function handleAddDebt() {
     if (!newDebt.name.trim() || !newDebt.amount) return
+
     const personName = newDebt.name
 
-    const newEntry: Debt = {
-      id: Date.now(),
-      name: personName,
-      dueDate: newDebt.dueDate,
-      status: "PENDING",
+    createDebt.mutate({
+      peer_name: newDebt.name,
       amount: Number(newDebt.amount),
-      type: tab
-    }
-    setDebts(prev => [...prev, newEntry])
-    addNotification(`Added debt for ${personName || "Unknown"}`)
-    setNewDebt({ name: "", dueDate: "", amount: "" })
+      due_date: newDebt.dueDate,
+      type: tab === "owed" ? "lent" : "borrowed",
+      reminder_enabled: newDebt.reminder
+    })
+
+    setNewDebt({ name: "", dueDate: "", amount: "", reminder: false })
     setShowAdd(false)
+  }
+
+  function markAsPaid(id: string) {
+    updateDebt.mutate({
+      id,
+      data: { status: "paid" } as any
+    })
   }
 
   return (
@@ -143,7 +203,7 @@ export default function DebtPage() {
       {/* TABS + ACTIONS */}
       <div className="flex justify-between items-center">
 
-        <div className="flex gap-6  text-sm">
+        <div className="flex gap-6 text-sm">
 
           <button
             onClick={() => setTab("owe")}
@@ -171,40 +231,37 @@ export default function DebtPage() {
 
         <div className="flex gap-3 items-center">
 
-            <div className="relative" ref={notifRef}>
-
+          <div className="relative" ref={notifRef}>
             <button
-            onClick={() => {setShowNotif(prev => !prev)}}                
-            className="w-10 h-10 border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50"
+              onClick={() => setShowNotif(prev => !prev)}
+              className="w-10 h-10 border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50"
             >
-                <Bell size={16}/>
+              <Bell size={16}/>
             </button>
-            {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">
-                {unreadCount}
-                </span>
-            )}        
-                {showNotif && (
-                <div className="absolute right-0 mt-2 w-72 bg-white shadow-lg rounded-xl p-3 z-50">
 
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+
+            {showNotif && (
+              <div className="absolute right-0 mt-2 w-72 bg-white shadow-lg rounded-xl p-3 z-50">
                 <p className="text-xs text-gray-400 mb-2">Notifications</p>
 
                 {notifications.length === 0 ? (
-                    <p className="text-sm text-gray-400">No notifications</p>
+                  <p className="text-sm text-gray-400">No notifications</p>
                 ) : (
-                    notifications.map((n, i) => (
-                    <div key={i} className={`text-sm py-1 border-b last:border-none ${
-                        !n.read ? "font-semibold" : "text-gray-500"
-                         }`}>
-                        {n.message}
+                  notifications.map((n, i) => (
+                    <div key={i} className="text-sm py-1 border-b last:border-none">
+                      {n.message}
                     </div>
-                    ))
+                  ))
                 )}
-
-                </div>
+              </div>
             )}
 
-            </div>
+          </div>
 
           <button
             onClick={() => setShowAdd(true)}
@@ -215,61 +272,21 @@ export default function DebtPage() {
           </button>
 
         </div>
-
       </div>
 
-      {/* TABLE (NO LINES) */}
+      {/* TABLE */}
       <div className="bg-white rounded-xl shadow-sm">
-
         <table className="w-full text-sm">
-
-          <thead className="text-xs text-gray-400 uppercase">
-            <tr className="text-left">
-              <th className="p-4"></th>
-              <th>OWED TO</th>
-              <th>DUE DATE</th>
-              <th>STATUS</th>
-              <th>AMOUNT</th>
-              <th>ACTIONS</th>
-            </tr>
-          </thead>
-
           <tbody>
-
             {filteredDebts.map(d => (
-
               <tr key={d.id} className="hover:bg-gray-50">
 
-                <td className="p-4">
-                  <input type="checkbox"/>
-                </td>
-
-                <td className="flex items-center gap-3 py-4">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold">
-                    {d.name.charAt(0)}
-                  </div>
-                  {d.name}
-                </td>
-
+                <td className="p-4">{d.name}</td>
                 <td>{d.dueDate}</td>
-
-                <td>
-                  {d.status === "PENDING" && (
-                    <span className="bg-red-100 text-red-500 px-2 py-1 rounded-full text-xs">
-                      PENDING
-                    </span>
-                  )}
-                  {d.status === "PAID" && (
-                    <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full text-xs">
-                      PAID
-                    </span>
-                  )}
-                </td>
-
+                <td>{d.status}</td>
                 <td>${d.amount.toFixed(2)}</td>
 
                 <td className="flex gap-4 items-center">
-
                   <button onClick={() => setEditingDebt(d)}>
                     <Pencil size={16}/>
                   </button>
@@ -278,19 +295,19 @@ export default function DebtPage() {
                     <Trash2 size={16}/>
                   </button>
 
+                  <button onClick={() => markAsPaid(d.id)}>
+                    ✅
+                  </button>
                 </td>
 
               </tr>
-
             ))}
-
           </tbody>
-
         </table>
-
       </div>
 
       {/* ADD MODAL */}
+{/* ADD MODAL */}
 {showAdd && (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
 
@@ -394,6 +411,17 @@ export default function DebtPage() {
         />
       </div>
 
+      {/* ✅ Reminder (ONLY addition, properly placed) */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={newDebt.reminder}
+          onChange={(e)=>setNewDebt({...newDebt, reminder:e.target.checked})}
+          className="accent-[#3C12E7]"
+        />
+        <span className="text-sm text-gray-600">Enable Reminder</span>
+      </div>
+
       {/* Add Button */}
       <button
         type="submit"
@@ -414,7 +442,6 @@ export default function DebtPage() {
     </form>
   </div>
 )}
-
       {/* EDIT MODAL */}
       {editingDebt && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
@@ -427,10 +454,7 @@ export default function DebtPage() {
             className="bg-white p-6 rounded-xl w-[400px] space-y-4"
           >
 
-            <h2 className="text-lg font-semibold">Edit Debt</h2>
-
             <input
-              type="text"
               value={editingDebt.name}
               onChange={(e)=>setEditingDebt({...editingDebt,name:e.target.value})}
               className="border p-2 w-full rounded"
@@ -445,23 +469,19 @@ export default function DebtPage() {
 
             <input
               type="number"
-              min="0"
-              step="0.01"
               value={editingDebt.amount}
               onChange={(e)=>setEditingDebt({...editingDebt,amount:Number(e.target.value)})}
               className="border p-2 w-full rounded"
             />
 
             <div className="flex gap-3">
-
-              <button type="submit" className="bg-[#3C12E7] text-white px-4 py-2 rounded">
+              <button className="bg-[#3C12E7] text-white px-4 py-2 rounded">
                 Save
               </button>
 
               <button type="button" onClick={()=>setEditingDebt(null)}>
                 Cancel
               </button>
-
             </div>
 
           </form>

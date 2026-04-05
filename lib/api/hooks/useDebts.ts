@@ -66,12 +66,12 @@ export const useCreateDebt = () => {
   });
 };
 
-export const useUpdateDebt = (id: string) => {
+export const useUpdateDebt = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (debt: UpdateDebtInput) => {
-      const { data: responseBody } = await apiClient.put<Debt | ApiResponse<Debt>>(`/debts/${id}`, debt);
+    mutationFn: async ({ id, data }: { id: string; data: UpdateDebtInput }) => {
+      const { data: responseBody } = await apiClient.put<Debt | ApiResponse<Debt>>(`/debts/${id}`, data);
       return extractData<Debt>(responseBody);
     },
     onSuccess: () => {
@@ -87,6 +87,19 @@ export const useMarkDebtPaid = () => {
     mutationFn: async (id: string) => {
       const { data: responseBody } = await apiClient.patch<Debt | ApiResponse<Debt>>(`/debts/${id}/pay`);
       return extractData<Debt>(responseBody);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts'] });
+    },
+  });
+};
+
+export const useDeleteDebt = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/debts/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] });
