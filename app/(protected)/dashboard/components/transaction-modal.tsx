@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Icon from '../../components/icon';
+import Icon from '@/components/icon';
 import { useCreateExpense } from '@/lib/api/hooks/useExpenses';
 import { useCreateDebt } from '@/lib/api/hooks/useDebts';
 import { useCategories } from '@/lib/api/hooks/useCategories';
@@ -161,7 +161,7 @@ export default function TransactionModal({ isOpen, onClose, initialStep = 'choic
                                     onChange={(e) => setExpenseForm({ ...expenseForm, category_id: e.target.value })}
                                 >
                                     <option value="">Uncategorized</option>
-                                    {categories?.map(cat => (
+                                    {Array.isArray(categories) && categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
                                 </select>
