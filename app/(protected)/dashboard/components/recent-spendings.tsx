@@ -17,7 +17,7 @@ export default function RecentSpendings() {
         return localDate.toISOString().split('T')[0];
     };
 
-    const todayStr = toLocalISO(now);
+    const todayStr = toLocalISO(now)!;
 
     // Today
     const { 
@@ -30,24 +30,24 @@ export default function RecentSpendings() {
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
-    const startOfWeekStr = toLocalISO(startOfWeek);
+    const startOfWeekStr = toLocalISO(startOfWeek)!;
     const { data: weekExpenses, isLoading: loadingWeek } = useExpenses({ from_date: startOfWeekStr, to_date: todayStr });
 
     // This Month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfMonthStr = toLocalISO(startOfMonth);
+    const startOfMonthStr = toLocalISO(startOfMonth)!;
     const { data: monthExpenses, isLoading: loadingMonth } = useExpenses({ from_date: startOfMonthStr, to_date: todayStr });
 
     const todayTotal = useMemo(() => 
-        todayExpenses?.reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0) || 0
+        Array.isArray(todayExpenses) ? todayExpenses.reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0) : 0
     , [todayExpenses]);
 
     const weekTotal = useMemo(() => 
-        weekExpenses?.reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0) || 0
+        Array.isArray(weekExpenses) ? weekExpenses.reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0) : 0
     , [weekExpenses]);
 
     const monthTotal = useMemo(() => 
-        monthExpenses?.reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0) || 0
+        Array.isArray(monthExpenses) ? monthExpenses.reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0) : 0
     , [monthExpenses]);
 
     const formatCurrency = (val: number) => {

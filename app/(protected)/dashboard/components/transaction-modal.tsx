@@ -161,7 +161,7 @@ export default function TransactionModal({ isOpen, onClose, initialStep = 'choic
                                     onChange={(e) => setExpenseForm({ ...expenseForm, category_id: e.target.value })}
                                 >
                                     <option value="">Uncategorized</option>
-                                    {categories?.map(cat => (
+                                    {Array.isArray(categories) && categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
                                 </select>
