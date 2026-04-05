@@ -105,7 +105,7 @@ const CategoryBreakdown = memo(({ activePeriod, setActivePeriod, className = "" 
   const { data: expenses, isLoading } = useExpenses(dateRange);
 
   const { chartData, totalAmount } = useMemo(() => {
-    if (!expenses) return { chartData: [], totalAmount: 0 };
+    if (!expenses || !Array.isArray(expenses)) return { chartData: [], totalAmount: 0 };
 
     const categoryMap = new Map<string, number>();
     let total = 0;
@@ -118,7 +118,7 @@ const CategoryBreakdown = memo(({ activePeriod, setActivePeriod, className = "" 
     });
 
     const data = Array.from(categoryMap.entries()).map(([catId, amount]) => {
-      const category = categories?.find(c => c.id === catId);
+      const category = Array.isArray(categories) ? categories.find(c => c.id === catId) : undefined;
       const name = category?.name || (catId === 'uncategorized' ? 'Other' : 'Unknown');
       const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
       const colorInfo = getCategoryColor(name);
