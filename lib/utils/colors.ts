@@ -13,7 +13,11 @@ export const categoryColorMap: Record<string, { hex: string, classes: string }> 
 
 export const getCategoryColor = (name: string = '') => {
     const t = name.toLowerCase();
-    if (t.includes('food') || t.includes('drink') || t.includes('restaurant') || t.includes('cafe')) 
+    if (t.includes('subscription') || t.includes('netflix') || t.includes('streaming'))
+        return categoryColorMap.entertainment;
+    if (t.includes('drink') || t.includes('coffee') || t.includes('beverage'))
+        return categoryColorMap.utilities;
+    if (t.includes('food') || t.includes('restaurant') || t.includes('cafe'))
         return categoryColorMap.food;
     if (t.includes('transport') || t.includes('taxi') || t.includes('bus') || t.includes('fuel')) 
         return categoryColorMap.transport;
