@@ -1,14 +1,38 @@
 "use client"
 
-import { useState ,  useRef, useEffect } from "react"
-import { Bell, Plus, Pencil, Trash2, Wallet, CreditCard } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Plus, Pencil, Trash2, Wallet, CreditCard, Check } from "lucide-react"
 
 import {
   useDebts,
   useCreateDebt,
   useUpdateDebt,
-  useDeleteDebt
+  useDeleteDebt,
+  useMarkDebtPaid,
 } from "@/lib/api/hooks/useDebts"
+import { useProfile } from "@/lib/api/hooks/useUser"
+
+const PAGE_SIZE = 7
+
+function toDateInputValue(value: string) {
+  if (!value) return ""
+  if (value.includes("T")) return value.slice(0, 10)
+  return value.length >= 10 ? value.slice(0, 10) : value
+}
+
+function getCurrencySymbol(currencyCode: string) {
+  try {
+    const parts = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).formatToParts(0)
+    return parts.find((p) => p.type === "currency")?.value ?? currencyCode
+  } catch {
+    return currencyCode
+  }
+}
 
 type Debt = {
   id: string
@@ -17,23 +41,28 @@ type Debt = {
   status: "PENDING" | "PAID" |"OVERDUE"
   amount: number
   type: "owe" | "owed"
-  reminder?: boolean
 }
 
 export default function DebtPage() {
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null)
+  const [actionError, setActionError] = useState("")
+  const [page, setPage] = useState(1)
 
   /** API */
+  const { data: profile } = useProfile()
+  const currencyCode = profile?.default_currency ?? "USD"
+  const currencySymbol = getCurrencySymbol(currencyCode)
   const { data: debts = [] } = useDebts()
   const createDebt = useCreateDebt()
   const updateDebt = useUpdateDebt()
   const deleteDebt = useDeleteDebt()
+  const markDebtPaid = useMarkDebtPaid()
 
   /** MAP API → UI */
   const mappedDebts: Debt[] = debts.map((d: any) => ({
     id: d.id,
     name: d.peer_name,
-    dueDate: d.due_date,
+    dueDate: toDateInputValue(String(d.due_date ?? "")),
     status:
       d.status === "paid"
         ? "PAID"
@@ -42,118 +71,143 @@ export default function DebtPage() {
         : "PENDING",    
     amount: d.amount,
     type: d.type === "lent" ? "owed" : "owe",
-    reminder: d.reminder_enabled
   }))
 
-const reminderNotifications = mappedDebts
-  .filter(d => {
-    if (!d.reminder) return false
-
-    const today = new Date()
-    const due = new Date(d.dueDate)
-
-    const diff = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-
-    return diff <= 1 && d.status !== "PAID"
-  })
-  .map(d => ({
-    message: `${d.name} debt is due ${d.dueDate}`,
-    read: false
-  }))
-  
   /** STATE */
   const [showAdd, setShowAdd] = useState(false)
   const [tab, setTab] = useState<"owe" | "owed">("owe")
-
-  type Notification = {
-    message: string
-    read: boolean
-  }
-
-const notifications = reminderNotifications
-const unreadCount = notifications.length
-const [showNotif, setShowNotif] = useState(false)
 
   const [newDebt, setNewDebt] = useState({
     name: "",
     dueDate: "",
     amount: "",
-    reminder: false
   })
-
-  const notifRef = useRef<HTMLDivElement | null>(null)
-
-  /** CLICK OUTSIDE */
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-        setShowNotif(false)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
 
   /** CALCULATIONS */
   const totalLent = mappedDebts
-    .filter(d => d.type === "owed")
+    .filter((d) => d.type === "owed" && d.status !== "PAID")
     .reduce((s, d) => s + d.amount, 0)
 
   const totalBorrowed = mappedDebts
-    .filter(d => d.type === "owe")
+    .filter((d) => d.type === "owe" && d.status !== "PAID")
     .reduce((s, d) => s + d.amount, 0)
 
-  const peopleOweYou = mappedDebts.filter(d => d.type === "owed").length
-  const youOwe = mappedDebts.filter(d => d.type === "owe").length
+  const peopleOweYou = mappedDebts.filter((d) => d.type === "owed" && d.status !== "PAID").length
+  const youOwe = mappedDebts.filter((d) => d.type === "owe" && d.status !== "PAID").length
 
-  const filteredDebts = mappedDebts.filter(d => d.type === tab)
+  const filteredDebts = mappedDebts.filter((d) => d.type === tab)
+  const totalPages = Math.max(1, Math.ceil(filteredDebts.length / PAGE_SIZE))
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages))
+  }, [totalPages])
+
+  const safePage = Math.min(page, totalPages)
+  const pageSlice = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE
+    return filteredDebts.slice(start, start + PAGE_SIZE)
+  }, [filteredDebts, safePage])
+  const rangeStart = filteredDebts.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, filteredDebts.length)
 
  
   /** ACTIONS */
 
-  function handleDelete(id: string) {
-    const person = mappedDebts.find(d => d.id === id)?.name || "Unknown"
-    deleteDebt.mutate(id)
+  async function handleDelete(id: string) {
+    try {
+      setActionError("")
+      await deleteDebt.mutateAsync(id)
+    } catch (error: any) {
+      const message = error?.response?.data?.errors?.[0] || error?.response?.data?.message || "Could not delete debt."
+      setActionError(message)
+    }
   }
 
-  function handleSaveEdit() {
+  async function handleSaveEdit() {
     if (!editingDebt) return
+    if (!editingDebt.name.trim()) {
+      setActionError("Name is required.")
+      return
+    }
+    if (!editingDebt.dueDate) {
+      setActionError("Due date is required.")
+      return
+    }
+    if (!editingDebt.amount || editingDebt.amount <= 0) {
+      setActionError("Amount must be greater than zero.")
+      return
+    }
 
-    updateDebt.mutate({
-      id: editingDebt.id,
-      data: {
-        peer_name: editingDebt.name,
-        amount: editingDebt.amount,
-        due_date: editingDebt.dueDate
-      }
+    try {
+      setActionError("")
+      await updateDebt.mutateAsync({
+        id: editingDebt.id,
+        data: {
+          type: editingDebt.type === "owed" ? "lent" : "borrowed",
+          peer_name: editingDebt.name.trim(),
+          amount: Number(editingDebt.amount),
+          due_date: toDateInputValue(editingDebt.dueDate),
+          reminder_enabled: false,
+        }
+      })
+
+      setEditingDebt(null)
+    } catch (error: any) {
+      const message = error?.response?.data?.errors?.[0] || error?.response?.data?.message || "Could not update debt."
+      setActionError(message)
+    }
+  }
+
+  function handleOpenEdit(debt: Debt) {
+    setActionError("")
+    setEditingDebt({
+      ...debt,
+      dueDate: toDateInputValue(debt.dueDate),
+      amount: Number(debt.amount),
+      name: debt.name ?? "",
     })
+  }
 
+  function handleCloseEdit() {
+    setActionError("")
     setEditingDebt(null)
   }
 
-  function handleAddDebt() {
-    if (!newDebt.name.trim() || !newDebt.amount) return
-
-    const personName = newDebt.name
-
-    createDebt.mutate({
-      peer_name: newDebt.name,
-      amount: Number(newDebt.amount),
-      due_date: newDebt.dueDate,
-      type: tab === "owed" ? "lent" : "borrowed",
-      reminder_enabled: newDebt.reminder
-    })
-
-    setNewDebt({ name: "", dueDate: "", amount: "", reminder: false })
+  function handleCloseAdd() {
+    setActionError("")
     setShowAdd(false)
   }
 
-  function markAsPaid(id: string) {
-    updateDebt.mutate({
-      id,
-      data: { status: "paid" } as any
+  function handleAddDebt() {
+    if (!newDebt.name.trim() || !newDebt.amount || !newDebt.dueDate) return
+
+    setActionError("")
+    createDebt.mutate({
+      peer_name: newDebt.name,
+      amount: Number(newDebt.amount),
+      due_date: toDateInputValue(newDebt.dueDate),
+      type: tab === "owed" ? "lent" : "borrowed",
+      reminder_enabled: false,
+    }, {
+      onSuccess: () => {
+        setNewDebt({ name: "", dueDate: "", amount: "" })
+        setShowAdd(false)
+      },
+      onError: (error: any) => {
+        const message = error?.response?.data?.errors?.[0] || error?.response?.data?.message || "Could not create debt."
+        setActionError(message)
+      }
     })
+  }
+
+  async function handleMarkPaid(id: string) {
+    try {
+      setActionError("")
+      await markDebtPaid.mutateAsync(id)
+    } catch (error: any) {
+      const message = error?.response?.data?.errors?.[0] || error?.response?.data?.message || "Could not mark debt as paid."
+      setActionError(message)
+    }
   }
 
   return (
@@ -230,39 +284,6 @@ const [showNotif, setShowNotif] = useState(false)
         </div>
 
         <div className="flex gap-3 items-center">
-
-          <div className="relative" ref={notifRef}>
-            <button
-              onClick={() => setShowNotif(prev => !prev)}
-              className="w-10 h-10 border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50"
-            >
-              <Bell size={16}/>
-            </button>
-
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">
-                {unreadCount}
-              </span>
-            )}
-
-            {showNotif && (
-              <div className="absolute right-0 mt-2 w-72 bg-white shadow-lg rounded-xl p-3 z-50">
-                <p className="text-xs text-gray-400 mb-2">Notifications</p>
-
-                {notifications.length === 0 ? (
-                  <p className="text-sm text-gray-400">No notifications</p>
-                ) : (
-                  notifications.map((n, i) => (
-                    <div key={i} className="text-sm py-1 border-b last:border-none">
-                      {n.message}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-          </div>
-
           <button
             onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 bg-[#3C12E7] text-white px-4 py-2 rounded-full"
@@ -275,73 +296,148 @@ const [showNotif, setShowNotif] = useState(false)
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <table className="w-full text-sm">
-          <tbody>
-            {filteredDebts.map(d => (
-              <tr key={d.id} className="hover:bg-gray-50">
-
-                <td className="p-4">{d.name}</td>
-                <td>{d.dueDate}</td>
-                <td>{d.status}</td>
-                <td>${d.amount.toFixed(2)}</td>
-
-                <td className="flex gap-4 items-center">
-                  <button onClick={() => setEditingDebt(d)}>
-                    <Pencil size={16}/>
-                  </button>
-
-                  <button onClick={() => handleDelete(d.id)}>
-                    <Trash2 size={16}/>
-                  </button>
-
-                  <button onClick={() => markAsPaid(d.id)}>
-                    ✅
-                  </button>
-                </td>
-
+      <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+        {actionError && (
+          <div className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {actionError}
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/90 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Due Date</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Amount</th>
+                <th className="w-32 px-4 py-3 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {pageSlice.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
+                    No debts for this tab yet.
+                  </td>
+                </tr>
+              ) : (
+                pageSlice.map((d) => (
+                  <tr key={d.id} className="text-gray-800 transition-colors hover:bg-gray-50/80">
+                    <td className="px-4 py-3 font-medium">{d.name}</td>
+                    <td className="px-4 py-3 text-gray-500">{d.dueDate}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                          d.status === "PAID"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : d.status === "OVERDUE"
+                            ? "bg-rose-100 text-rose-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {d.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums">${d.amount.toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(d)}
+                          className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-indigo-600"
+                          aria-label={`Edit ${d.name}`}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(d.id)}
+                          className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          aria-label={`Delete ${d.name}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleMarkPaid(d.id)}
+                          disabled={d.status === "PAID"}
+                          className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40"
+                          aria-label={`Mark ${d.name} as paid`}
+                        >
+                          <Check size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-gray-500">
+            Showing {rangeStart}-{rangeEnd} of {filteredDebts.length}
+          </p>
+          <div className="flex items-center gap-2 text-sm">
+            <button
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-lg px-3 py-1.5 font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">{safePage}</span>
+            <span className="text-gray-500">of {totalPages}</span>
+            <button
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-lg px-3 py-1.5 font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ADD MODAL */}
 {/* ADD MODAL */}
 {showAdd && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
     <form
       onSubmit={(e) => {
         e.preventDefault()
         handleAddDebt()
       }}
-      className="bg-white w-[420px] rounded-2xl p-6 space-y-5"
+      className="relative w-full max-w-md space-y-5 overflow-hidden rounded-xl bg-white p-6 shadow-2xl"
     >
 
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="font-semibold text-lg">Record New Debt</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Record New Debt</h2>
 
         <button
           type="button"
-          onClick={() => setShowAdd(false)}
-          className="text-gray-400 hover:text-black text-xl"
+          onClick={handleCloseAdd}
+          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          aria-label="Close modal"
         >
-          ✕
+          <span className="text-lg leading-none">×</span>
         </button>
       </div>
 
       {/* Toggle */}
-      <div className="bg-gray-100 rounded-lg flex text-sm p-1">
+      <div className="mb-1 flex gap-3 text-sm">
 
         <button
           type="button"
           onClick={() => setTab("owe")}
           className={`flex-1 py-1 rounded-md ${
             tab === "owe"
-              ? "bg-white shadow text-red-500"
-              : "text-gray-500"
+              ? "rounded-lg bg-pink-500 py-2 font-semibold text-white shadow-md shadow-pink-500/20"
+              : "rounded-lg bg-gray-100 py-2 font-semibold text-gray-500 transition-colors hover:bg-gray-200"
           }`}
         >
           I Owe
@@ -352,8 +448,8 @@ const [showNotif, setShowNotif] = useState(false)
           onClick={() => setTab("owed")}
           className={`flex-1 py-1 rounded-md ${
             tab === "owed"
-              ? "bg-white shadow text-red-500"
-              : "text-gray-500"
+              ? "rounded-lg bg-blue-500 py-2 font-semibold text-white shadow-md shadow-blue-500/20"
+              : "rounded-lg bg-gray-100 py-2 font-semibold text-gray-500 transition-colors hover:bg-gray-200"
           }`}
         >
           Owed To Me
@@ -363,69 +459,60 @@ const [showNotif, setShowNotif] = useState(false)
 
       {/* Person Name */}
       <div>
-        <p className="text-sm text-gray-500 mb-1">Persons Name</p>
+        <p className="mb-1 text-sm font-medium text-gray-700">Person Name</p>
 
         <input
           type="text"
           placeholder={tab === "owe" ? "Who is owed?" : "Who owes me?"}
           value={newDebt.name}
           onChange={(e)=>setNewDebt({...newDebt,name:e.target.value})}
-          className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#3C12E7]"
+          className="w-full rounded-lg border border-gray-200 p-2 outline-none focus:ring-2 focus:ring-accent/20"
         />
       </div>
 
       {/* Amount */}
       <div>
-        <p className="text-sm text-gray-500 mb-1">Total Amount</p>
+        <p className="mb-1 text-sm font-medium text-gray-700">
+          Total Amount ({currencyCode})
+        </p>
 
         <input
           type="number"
           min="0"
           step="0.01"
-          placeholder="$ 0.00"
+          placeholder={`${currencySymbol} 0.00`}
           value={newDebt.amount}
           onChange={(e)=>setNewDebt({...newDebt,amount:e.target.value})}
-          className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#3C12E7]"
+          className="w-full rounded-lg border border-gray-200 p-2 outline-none focus:ring-2 focus:ring-accent/20"
         />
       </div>
 
       {/* Date */}
       <div>
-        <p className="text-sm text-gray-500 mb-1">Due Date</p>
+        <p className="mb-1 text-sm font-medium text-gray-700">Due Date</p>
 
         <input
           type="date"
           value={newDebt.dueDate}
           onChange={(e)=>setNewDebt({...newDebt,dueDate:e.target.value})}
-          className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-[#3C12E7]"
+          className="w-full rounded-lg border border-gray-200 p-2 outline-none focus:ring-2 focus:ring-accent/20"
         />
       </div>
 
       {/* Notes */}
       <div>
-        <p className="text-sm text-gray-500 mb-1">Notes</p>
+        <p className="mb-1 text-sm font-medium text-gray-700">Note</p>
 
         <textarea
           placeholder="Add some details about this debt..."
-          className="w-full border rounded-lg p-2 h-20 resize-none outline-none focus:ring-2 focus:ring-[#3C12E7]"
+          className="h-20 w-full resize-none rounded-lg border border-gray-200 p-2 outline-none focus:ring-2 focus:ring-accent/20"
         />
-      </div>
-
-      {/* ✅ Reminder (ONLY addition, properly placed) */}
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={newDebt.reminder}
-          onChange={(e)=>setNewDebt({...newDebt, reminder:e.target.checked})}
-          className="accent-[#3C12E7]"
-        />
-        <span className="text-sm text-gray-600">Enable Reminder</span>
       </div>
 
       {/* Add Button */}
       <button
         type="submit"
-        className="w-full bg-[#3C12E7] text-white py-2 rounded-lg font-medium shadow-md"
+        className="mt-2 w-full rounded-xl bg-accent py-3 font-bold text-white shadow-lg shadow-accent/20 transition-colors hover:bg-accent/95"
       >
         + Add Debt
       </button>
@@ -433,8 +520,8 @@ const [showNotif, setShowNotif] = useState(false)
       {/* Cancel */}
       <button
         type="button"
-        onClick={() => setShowAdd(false)}
-        className="w-full text-gray-500 text-sm"
+        onClick={handleCloseAdd}
+        className="w-full rounded-lg py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100"
       >
         Cancel
       </button>
@@ -444,43 +531,73 @@ const [showNotif, setShowNotif] = useState(false)
 )}
       {/* EDIT MODAL */}
       {editingDebt && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              handleSaveEdit()
+              void handleSaveEdit()
             }}
-            className="bg-white p-6 rounded-xl w-[400px] space-y-4"
+            className="relative w-full max-w-lg rounded-[1.75rem] bg-white p-8 shadow-2xl"
           >
+            <button
+              type="button"
+              onClick={handleCloseEdit}
+              className="absolute right-6 top-6 rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Close"
+            >
+              <span className="text-lg leading-none">×</span>
+            </button>
 
-            <input
-              value={editingDebt.name}
-              onChange={(e)=>setEditingDebt({...editingDebt,name:e.target.value})}
-              className="border p-2 w-full rounded"
-            />
+            <h2 className="pr-10 text-2xl font-bold tracking-tight text-gray-900">Edit Debt</h2>
+            <p className="mt-1 text-sm text-gray-500">Update this debt record.</p>
 
-            <input
-              type="date"
-              value={editingDebt.dueDate}
-              onChange={(e)=>setEditingDebt({...editingDebt,dueDate:e.target.value})}
-              className="border p-2 w-full rounded"
-            />
+            <div className="mt-8 space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-600">Person Name</label>
+                <input
+                  value={editingDebt.name}
+                  onChange={(e)=>setEditingDebt({...editingDebt,name:e.target.value})}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-gray-900 outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
+                />
+              </div>
 
-            <input
-              type="number"
-              value={editingDebt.amount}
-              onChange={(e)=>setEditingDebt({...editingDebt,amount:Number(e.target.value)})}
-              className="border p-2 w-full rounded"
-            />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-600">Amount</label>
+                  <input
+                    type="number"
+                    value={editingDebt.amount}
+                    onChange={(e)=>setEditingDebt({...editingDebt,amount:Number(e.target.value)})}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-gray-900 outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
+                  />
+                </div>
 
-            <div className="flex gap-3">
-              <button className="bg-[#3C12E7] text-white px-4 py-2 rounded">
-                Save
-              </button>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-600">Due Date</label>
+                  <input
+                    type="date"
+                    value={editingDebt.dueDate}
+                    onChange={(e)=>setEditingDebt({...editingDebt,dueDate:e.target.value})}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-gray-900 outline-none focus:border-accent/40 focus:ring-2 focus:ring-accent/15"
+                  />
+                </div>
+              </div>
+            </div>
 
-              <button type="button" onClick={()=>setEditingDebt(null)}>
+            <div className="flex gap-3 pt-6">
+              <button
+                type="button"
+                onClick={handleCloseEdit}
+                className="flex-1 rounded-xl border border-gray-200 bg-white py-3.5 text-center text-sm font-semibold text-gray-800 shadow-sm transition-colors hover:bg-gray-50"
+              >
                 Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 rounded-xl bg-accent py-3.5 text-center text-sm font-semibold text-white shadow-lg shadow-accent/25 transition-colors hover:bg-accent/95"
+              >
+                Save changes
               </button>
             </div>
 
