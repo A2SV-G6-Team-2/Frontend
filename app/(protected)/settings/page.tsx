@@ -6,6 +6,7 @@ import { useCategories, useCreateCategory, useDeleteCategory } from '@/lib/api/h
 import Icon from '@/components/icon';
 
 type ModalType = 'name' | 'email' | 'currency' | 'frequency' | 'date' | '';
+const BUDGET_STORAGE_KEY = 'spendwise_budget_amount';
 
 type ModalState = {
     open: boolean;
@@ -224,6 +225,12 @@ export default function SettingsPage() {
         setFrequency(profile.budget_frequency ?? 'Monthly');
         if (typeof profile.budget_amount === 'number') {
             setBudgetAmount(profile.budget_amount.toFixed(2));
+            localStorage.setItem(BUDGET_STORAGE_KEY, profile.budget_amount.toFixed(2));
+        } else {
+            const storedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
+            if (storedBudget !== null) {
+                setBudgetAmount(storedBudget);
+            }
         }
         if (profile.budget_start_date) {
             const date = new Date(profile.budget_start_date);
@@ -427,7 +434,9 @@ export default function SettingsPage() {
                                         if (!Number.isFinite(parsed)) return;
                                         const ok = await saveProfileChanges({ budget_amount: parsed }, 'Budget amount updated.');
                                         if (!ok) return;
-                                        setBudgetAmount(parsed.toFixed(2));
+                                        const normalized = parsed.toFixed(2);
+                                        setBudgetAmount(normalized);
+                                        localStorage.setItem(BUDGET_STORAGE_KEY, normalized);
                                     }}
                                     placeholder="0.00"
                                 />
