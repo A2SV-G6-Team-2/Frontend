@@ -7,6 +7,7 @@ type User = components['schemas']['User'];
 type LoginInput = components['schemas']['LoginInput'];
 type RegisterInput = components['schemas']['RegisterInput'];
 type AuthResponse = components['schemas']['AuthResponse'];
+type UpdateUserInput = components['schemas']['UpdateUserInput'];
 
 // The backend typically wraps responses in an ApiResponse object
 interface ApiResponse<T> {
@@ -94,4 +95,24 @@ export const useLogout = () => {
     queryClient.clear();
     window.location.href = '/login';
   };
+};
+
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: UpdateUserInput) => {
+      const { data: responseBody } = await apiClient.put<null | ApiResponse<null>>('/user/update', payload);
+      return extractData<null>(responseBody);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.setQueryData<User | undefined>(['profile'], (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...variables,
+        };
+      });
+    },
+  });
 };

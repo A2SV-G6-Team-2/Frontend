@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link';
 import { usePathname } from "next/navigation";
 import Icon from '@/components/icon'
+import { useLogout } from '@/lib/api/hooks/useUser';
 
 function NavElement({ title, icon, isActive = false, link, onClick }: { title: string, icon: string, isActive?: boolean, link: string, onClick?: () => void }) {
     if (isActive) {
@@ -37,6 +38,7 @@ function NavElement({ title, icon, isActive = false, link, onClick }: { title: s
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const pathname = usePathname();
+    const logout = useLogout();
 
     return (
         <div className={`
@@ -86,7 +88,15 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean, onClose:
                 </div>
 
                 <div className="relative group shrink-0">
-                    <button aria-label="Log out" className="text-secondary hover:text-accent cursor-pointer transition-colors p-1">
+                    <button
+                        type="button"
+                        aria-label="Log out"
+                        onClick={() => {
+                            onClose();
+                            logout();
+                        }}
+                        className="text-secondary hover:text-accent cursor-pointer transition-colors p-1"
+                    >
                         <Icon src="/img/icons/logout.svg" className="w-4 h-4" />
                     </button>
                     <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">                       

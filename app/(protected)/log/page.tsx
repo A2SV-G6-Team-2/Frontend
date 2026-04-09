@@ -11,6 +11,7 @@ import type { SaveExpensePayload } from './components/add-expense-modal';
 import type { ExpenseLogRow } from './types';
 
 const PAGE_SIZE = 7;
+const BUDGET_STORAGE_KEY = 'spendwise_budget_amount';
 
 const DESIGN_CATEGORY_PILL: Record<string, string> = {
     Subscription: 'bg-amber-100 text-amber-800',
@@ -119,6 +120,24 @@ function SummaryBillIcon() {
 export default function LogPage() {
     const { data: profile } = useProfile();
     const currency = profile?.default_currency ?? 'USD';
+    const [budgetAmount, setBudgetAmount] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (typeof profile?.budget_amount === 'number' && Number.isFinite(profile.budget_amount)) {
+            setBudgetAmount(profile.budget_amount);
+            localStorage.setItem(BUDGET_STORAGE_KEY, profile.budget_amount.toFixed(2));
+            return;
+        }
+
+        const storedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
+        if (storedBudget === null) {
+            setBudgetAmount(null);
+            return;
+        }
+
+        const parsed = Number.parseFloat(storedBudget);
+        setBudgetAmount(Number.isFinite(parsed) ? parsed : null);
+    }, [profile?.budget_amount]);
 
     const dateRange = useMemo(() => {
         const now = new Date();
@@ -189,6 +208,10 @@ export default function LogPage() {
     }, [totalPages]);
 
     const totalSpent = useMemo(() => filtered.reduce((s, r) => s + r.amount, 0), [filtered]);
+    const remainingBudget = useMemo(() => {
+        if (budgetAmount === null) return null;
+        return budgetAmount - totalSpent;
+    }, [budgetAmount, totalSpent]);
 
     const safePage = Math.min(page, totalPages);
     const pageSlice = useMemo(() => {
@@ -282,7 +305,7 @@ export default function LogPage() {
                         <span className="text-sm font-medium text-secondary">Monthly Budget</span>
                         <SummaryWalletIcon />
                     </div>
-                    <p className="text-2xl font-bold text-gray-900">—</p>
+                    <p className="text-2xl font-bold text-gray-900">{budgetAmount === null ? '—' : formatMoney(budgetAmount)}</p>
                 </div>
                 <div className="flex flex-col rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
                     <div className="mb-3 flex items-start justify-between">
@@ -296,7 +319,7 @@ export default function LogPage() {
                         <span className="text-sm font-medium text-secondary">Remaining</span>
                         <SummaryBillIcon />
                     </div>
-                    <p className="text-2xl font-bold text-gray-900">—</p>
+                    <p className="text-2xl font-bold text-gray-900">{remainingBudget === null ? '—' : formatMoney(remainingBudget)}</p>
                 </div>
             </div>
 

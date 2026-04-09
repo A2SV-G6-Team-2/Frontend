@@ -14,7 +14,11 @@ interface ApiResponse<T> {
 
 function extractData<T>(response: any): T {
   if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
-    return response.data.items as T;
+    const data = response.data;
+    if (data && typeof data === 'object' && 'items' in data) {
+      return data.items as T;
+    }
+    return data as T;
   }
   return response as T;
 }
