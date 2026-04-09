@@ -51,10 +51,10 @@ export default function DashboardPage() {
     const { data: expenses, isLoading: loadingExpenses } = useExpenses(dateRange);
 
     const currentSpendingData: SpendingItem[] = useMemo(() => {
-        if (!expenses) return [];
+        if (!expenses || !Array.isArray(expenses)) return [];
 
         return expenses.map(exp => {
-            const category = categories?.find(c => c.id === exp.category_id);
+            const category = Array.isArray(categories) ? categories.find(c => c.id === exp.category_id) : undefined;
             const type = category?.name || 'Other';
             const typeColor = getCategoryColor(type || exp.note || '').classes;
 

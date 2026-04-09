@@ -1,20 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../client';
-import { components } from '../schema';
-import Cookies from 'js-cookie';
+import type { components } from '../schema';
+import { getAccessToken, setTokens, setUser, clearSession } from '@/lib/auth/token';
 
 type User = components['schemas']['User'];
 type LoginInput = components['schemas']['LoginInput'];
 type RegisterInput = components['schemas']['RegisterInput'];
 type AuthResponse = components['schemas']['AuthResponse'];
 
+// The backend typically wraps responses in an ApiResponse object
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T | null;
+}
+
+/**
+ * Helper to extract data from a potential ApiResponse wrapper.
+ * If the response is already the data (e.g. an array), it returns it.
+ */
+function extractData<T>(response: any): T {
+  if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
+    return response.data as T;
+  }
+  return response as T;
+}
+
 export const useProfile = () => {
   return useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
-      // If we have a dev user and no token cookie, return the dev user
       const devUser = process.env.NEXT_PUBLIC_DEV_USER;
-      if (!Cookies.get('token') && devUser) {
+      if (!getAccessToken() && devUser) {
         try {
           return JSON.parse(devUser) as User;
         } catch (e) {
@@ -22,10 +39,10 @@ export const useProfile = () => {
         }
       }
       
-      const { data } = await apiClient.get<User>('/user/profile');
-      return data;
+      const { data: responseBody } = await apiClient.get<User | ApiResponse<User>>('/user/profile');
+      return extractData<User>(responseBody);
     },
-    enabled: !!Cookies.get('token') || !!process.env.NEXT_PUBLIC_DEV_TOKEN,
+    enabled: !!getAccessToken() || !!process.env.NEXT_PUBLIC_DEV_TOKEN,
   });
 };
 
@@ -34,12 +51,17 @@ export const useLogin = () => {
   
   return useMutation({
     mutationFn: async (credentials: LoginInput) => {
-      const { data } = await apiClient.post<AuthResponse>('/auth/login', credentials);
-      return data;
+      const { data: responseBody } = await apiClient.post<AuthResponse | ApiResponse<AuthResponse>>('/auth/login', credentials);
+      return extractData<AuthResponse>(responseBody);
     },
     onSuccess: (data) => {
-      Cookies.set('token', data.token, { expires: 7 }); // expires in 7 days
-      queryClient.setQueryData(['profile'], data.user);
+      if (data && (data as any).token) {
+        setTokens((data as any).token, '');
+        if (data.user) {
+          setUser(data.user as any);
+        }
+        queryClient.setQueryData(['profile'], data.user);
+      }
     },
   });
 };
@@ -49,12 +71,17 @@ export const useRegister = () => {
   
   return useMutation({
     mutationFn: async (userData: RegisterInput) => {
-      const { data } = await apiClient.post<AuthResponse>('/auth/register', userData);
-      return data;
+      const { data: responseBody } = await apiClient.post<AuthResponse | ApiResponse<AuthResponse>>('/auth/register', userData);
+      return extractData<AuthResponse>(responseBody);
     },
     onSuccess: (data) => {
-      Cookies.set('token', data.token, { expires: 7 });
-      queryClient.setQueryData(['profile'], data.user);
+      if (data && (data as any).token) {
+        setTokens((data as any).token, '');
+        if (data.user) {
+          setUser(data.user as any);
+        }
+        queryClient.setQueryData(['profile'], data.user);
+      }
     },
   });
 };
@@ -63,7 +90,7 @@ export const useLogout = () => {
   const queryClient = useQueryClient();
   
   return () => {
-    Cookies.remove('token');
+    clearSession();
     queryClient.clear();
     window.location.href = '/login';
   };

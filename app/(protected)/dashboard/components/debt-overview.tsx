@@ -10,7 +10,7 @@ export default function DebtOverview({ className = "" }: { className?: string })
     const currency = profile?.default_currency || 'ETB';
 
     const netDebt = useMemo(() => {
-        if (!debts) return 0;
+        if (!debts || !Array.isArray(debts)) return 0;
         return debts.reduce((acc, debt) => {
             if (debt.status === 'paid') return acc;
             const amount = debt.amount || 0;
@@ -56,7 +56,7 @@ export default function DebtOverview({ className = "" }: { className?: string })
                                     Loading debts...
                                 </td>
                             </tr>
-                        ) : !debts || debts.length === 0 ? (
+                        ) : !debts || !Array.isArray(debts) || debts.length === 0 ? (
                             <tr>
                                 <td colSpan={4} className="px-6 py-10 text-center text-gray-400 italic">
                                     No debts found.
