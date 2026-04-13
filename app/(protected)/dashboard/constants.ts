@@ -2,21 +2,21 @@ import type { SpendingPeriod, SpendingItem, DebtItem, CategoryBreakdownData } fr
 
 export const spendingData: Record<SpendingPeriod, SpendingItem[]> = {
     Daily: [
-        { person: 'Dave', type: 'Drink', date: 'Jan 21st, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
-        { person: 'Dave', type: 'Food', date: 'Jan 21st, 2026', amount: '$37', typeColor: 'bg-pink-100/60 text-pink-600' },
+        { note: 'Dave', type: 'Drink', date: 'Jan 21st, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
+        { note: 'Dave', type: 'Food', date: 'Jan 21st, 2026', amount: '$37', typeColor: 'bg-pink-100/60 text-pink-600' },
     ],
     Weekly: [
-        { person: 'Dave', type: 'Drink', date: 'Jan 21st, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
-        { person: 'Dave', type: 'Food', date: 'Jan 21st, 2026', amount: '$37', typeColor: 'bg-pink-100/60 text-pink-600' },
-        { person: 'Dave', type: 'Drink', date: 'Jan 20th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
-        { person: 'Dave', type: 'Drink', date: 'Jan 19th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
+        { note: 'Dave', type: 'Drink', date: 'Jan 21st, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
+        { note: 'Dave', type: 'Food', date: 'Jan 21st, 2026', amount: '$37', typeColor: 'bg-pink-100/60 text-pink-600' },
+        { note: 'Dave', type: 'Drink', date: 'Jan 20th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
+        { note: 'Dave', type: 'Drink', date: 'Jan 19th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
     ],
     Monthly: [
-        { person: 'Dave', type: 'Drink', date: 'Jan 21st, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
-        { person: 'Dave', type: 'Food', date: 'Jan 15th, 2026', amount: '$37', typeColor: 'bg-pink-100/60 text-pink-600' },
-        { person: 'Dave', type: 'Drink', date: 'Jan 10th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
-        { person: 'Dave', type: 'Drink', date: 'Jan 5th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
-        { person: 'Dave', type: 'Rent', date: 'Jan 1st, 2026', amount: '$1200', typeColor: 'bg-purple-100/50 text-purple-600' },
+        { note: 'Dave', type: 'Drink', date: 'Jan 21st, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
+        { note: 'Dave', type: 'Food', date: 'Jan 15th, 2026', amount: '$37', typeColor: 'bg-pink-100/60 text-pink-600' },
+        { note: 'Dave', type: 'Drink', date: 'Jan 10th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
+        { note: 'Dave', type: 'Drink', date: 'Jan 5th, 2026', amount: '$15', typeColor: 'bg-blue-100/50 text-blue-600' },
+        { note: 'Dave', type: 'Rent', date: 'Jan 1st, 2026', amount: '$1200', typeColor: 'bg-purple-100/50 text-purple-600' },
     ]
 }
 

@@ -24,10 +24,10 @@ export default function DashboardPage() {
     const { data: categories } = useCategories();
 
     const now = new Date();
-    const toLocalISO = (date: Date) => {
+    const toLocalISO = (date: Date): string => {
         const offset = date.getTimezoneOffset();
         const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-        return localDate.toISOString().split('T')[0];
+        return localDate.toISOString().split('T')[0] ?? '';
     };
 
     const dateRange = useMemo(() => {
@@ -56,7 +56,7 @@ export default function DashboardPage() {
         return expenses.map(exp => {
             const category = Array.isArray(categories) ? categories.find(c => c.id === exp.category_id) : undefined;
             const type = category?.name || 'Other';
-            const typeColor = getCategoryColor(type || exp.note || '').classes;
+            const typeColor = getCategoryColor(type || exp.note || '')?.classes ?? 'bg-gray-100 text-gray-700';
 
             const dateObj = new Date(exp.expense_date || '');
             const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

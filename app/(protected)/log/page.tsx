@@ -123,9 +123,10 @@ export default function LogPage() {
     const [budgetAmount, setBudgetAmount] = useState<number | null>(null);
 
     useEffect(() => {
-        if (typeof profile?.budget_amount === 'number' && Number.isFinite(profile.budget_amount)) {
-            setBudgetAmount(profile.budget_amount);
-            localStorage.setItem(BUDGET_STORAGE_KEY, profile.budget_amount.toFixed(2));
+        const profileBudget = (profile as { budget_amount?: number } | undefined)?.budget_amount;
+        if (typeof profileBudget === 'number' && Number.isFinite(profileBudget)) {
+            setBudgetAmount(profileBudget);
+            localStorage.setItem(BUDGET_STORAGE_KEY, profileBudget.toFixed(2));
             return;
         }
 
@@ -137,7 +138,7 @@ export default function LogPage() {
 
         const parsed = Number.parseFloat(storedBudget);
         setBudgetAmount(Number.isFinite(parsed) ? parsed : null);
-    }, [profile?.budget_amount]);
+    }, [profile]);
 
     const dateRange = useMemo(() => {
         const now = new Date();

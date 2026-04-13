@@ -219,21 +219,26 @@ export default function SettingsPage() {
     // Keep display state in sync once the profile loads.
     useEffect(() => {
         if (!profile) return;
+        const extendedProfile = profile as typeof profile & {
+            budget_frequency?: (typeof frequencyOptions)[number];
+            budget_amount?: number;
+            budget_start_date?: string;
+        };
         setName(profile.name ?? 'Alex Chen');
         setEmail(profile.email ?? 'alex.j@university.edu');
         setCurrency(profile.default_currency ?? 'ETB');
-        setFrequency(profile.budget_frequency ?? 'Monthly');
-        if (typeof profile.budget_amount === 'number') {
-            setBudgetAmount(profile.budget_amount.toFixed(2));
-            localStorage.setItem(BUDGET_STORAGE_KEY, profile.budget_amount.toFixed(2));
+        setFrequency(extendedProfile.budget_frequency ?? 'Monthly');
+        if (typeof extendedProfile.budget_amount === 'number') {
+            setBudgetAmount(extendedProfile.budget_amount.toFixed(2));
+            localStorage.setItem(BUDGET_STORAGE_KEY, extendedProfile.budget_amount.toFixed(2));
         } else {
             const storedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
             if (storedBudget !== null) {
                 setBudgetAmount(storedBudget);
             }
         }
-        if (profile.budget_start_date) {
-            const date = new Date(profile.budget_start_date);
+        if (extendedProfile.budget_start_date) {
+            const date = new Date(extendedProfile.budget_start_date);
             if (!Number.isNaN(date.getTime())) {
                 setStartDate(date);
                 setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1));

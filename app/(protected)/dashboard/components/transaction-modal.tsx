@@ -16,6 +16,7 @@ interface TransactionModalProps {
 type ModalStep = 'choice' | 'spending' | 'debt';
 
 export default function TransactionModal({ isOpen, onClose, initialStep = 'choice' }: TransactionModalProps) {
+    const toLocalISO = (date: Date): string => date.toISOString().split('T')[0] ?? '';
     const [step, setStep] = useState<ModalStep>(initialStep);
     const { data: categories } = useCategories();
     
@@ -34,14 +35,14 @@ export default function TransactionModal({ isOpen, onClose, initialStep = 'choic
         amount: '',
         note: '',
         category_id: '',
-        expense_date: new Date().toISOString().split('T')[0],
+        expense_date: toLocalISO(new Date()),
     });
 
     const [debtForm, setDebtForm] = useState({
         type: 'lent' as 'lent' | 'borrowed',
         peer_name: '',
         amount: '',
-        due_date: new Date().toISOString().split('T')[0],
+        due_date: toLocalISO(new Date()),
         note: '',
     });
 
@@ -56,7 +57,7 @@ export default function TransactionModal({ isOpen, onClose, initialStep = 'choic
                 id: crypto.randomUUID(),
                 amount: parseFloat(expenseForm.amount),
                 note: expenseForm.note,
-                category_id: expenseForm.category_id || undefined,
+                category_id: expenseForm.category_id || null,
                 expense_date: expenseForm.expense_date,
                 is_recurring: false,
             });
@@ -66,7 +67,7 @@ export default function TransactionModal({ isOpen, onClose, initialStep = 'choic
                 amount: '',
                 note: '',
                 category_id: '',
-                expense_date: new Date().toISOString().split('T')[0],
+                expense_date: toLocalISO(new Date()),
             });
         } catch (error) {
             console.error('Failed to create expense', error);
@@ -77,11 +78,11 @@ export default function TransactionModal({ isOpen, onClose, initialStep = 'choic
         e.preventDefault();
         try {
             await createDebt.mutateAsync({
-                id: crypto.randomUUID(),
                 type: debtForm.type,
                 peer_name: debtForm.peer_name,
                 amount: parseFloat(debtForm.amount),
                 due_date: debtForm.due_date,
+                reminder_enabled: false,
                 note: debtForm.note,
             });
             onClose();
@@ -90,7 +91,7 @@ export default function TransactionModal({ isOpen, onClose, initialStep = 'choic
                 type: 'lent',
                 peer_name: '',
                 amount: '',
-                due_date: new Date().toISOString().split('T')[0],
+                due_date: toLocalISO(new Date()),
                 note: '',
             });
         } catch (error) {

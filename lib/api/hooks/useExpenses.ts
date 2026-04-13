@@ -56,12 +56,12 @@ export const useCreateExpense = () => {
   });
 };
 
-export const useUpdateExpense = (id: string) => {
+export const useUpdateExpense = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (expense: UpdateExpenseRequest) => {
-      const { data: responseBody } = await apiClient.put<Expense | ApiResponse<Expense>>(`/expenses/${id}`, expense);
+    mutationFn: async ({ id, body }: { id: string; body: UpdateExpenseRequest }) => {
+      const { data: responseBody } = await apiClient.put<Expense | ApiResponse<Expense>>(`/expenses/${id}`, body);
       return extractData<Expense>(responseBody);
     },
     onSuccess: () => {

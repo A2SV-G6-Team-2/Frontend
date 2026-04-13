@@ -1,6 +1,8 @@
 import { type IconProps } from '@tabler/icons-react';
 import React from 'react';
-import { Button, type ButtonVariant } from '../ui/button';
+import { Button } from '../ui/button';
+
+type ButtonVariant = React.ComponentProps<typeof Button>['variant'];
 
 interface SocialButtonProps {
   icon: React.ForwardRefExoticComponent<
