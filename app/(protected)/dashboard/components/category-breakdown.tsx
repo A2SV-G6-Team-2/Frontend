@@ -78,10 +78,10 @@ const CategoryBreakdown = memo(({ activePeriod, setActivePeriod, className = "" 
   const { data: categories } = useCategories();
   
   const now = new Date();
-  const toLocalISO = (date: Date) => {
+  const toLocalISO = (date: Date): string => {
       const offset = date.getTimezoneOffset();
       const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-      return localDate.toISOString().split('T')[0];
+      return localDate.toISOString().split('T')[0] ?? "";
   };
 
   const dateRange = useMemo(() => {
@@ -121,7 +121,7 @@ const CategoryBreakdown = memo(({ activePeriod, setActivePeriod, className = "" 
       const category = Array.isArray(categories) ? categories.find(c => c.id === catId) : undefined;
       const name = category?.name || (catId === 'uncategorized' ? 'Other' : 'Unknown');
       const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
-      const colorInfo = getCategoryColor(name);
+      const colorInfo = getCategoryColor(name) ?? { hex: "#3b82f6", classes: "" };
       
       return {
         name,

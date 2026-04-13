@@ -15,9 +15,6 @@ interface ApiErrorResponse {
 }
 
 export default function Signup() {
-<<<<<<< HEAD
-  return <div className="flex items-center justify-center">SignUpPage</div>;
-=======
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -347,5 +344,4 @@ export default function Signup() {
 
     </div>
   );
->>>>>>> main
 }
