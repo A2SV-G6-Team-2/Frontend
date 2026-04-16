@@ -92,7 +92,7 @@ export default function SpendingPage() {
     expenses.forEach(exp => {
       const expDate = new Date(exp.expense_date || exp.created_at || '');
       if (expDate >= weekStart && expDate <= weekEnd) {
-        const dayKey = expDate.toISOString().split('T')[0];
+        const dayKey = expDate.toISOString().split('T')[0] ?? '';
         dailyTotals.set(dayKey, (dailyTotals.get(dayKey) || 0) + (exp.amount || 0));
       }
     });
@@ -121,7 +121,7 @@ export default function SpendingPage() {
       
       monthlyData.push({
         day: `W${4 - i}`,
-        date: weekStart.toISOString().split('T')[0],
+        date: weekStart.toISOString().split('T')[0] ?? '',
         amount: weekTotal,
       });
     }
@@ -235,7 +235,6 @@ export default function SpendingPage() {
     weeklyData: [],
     monthlyData: [],
     categories: [],
-    insights: [],
   };
 
   return <SpendingDashboard data={dashboardData || fallbackData} isLoading={isLoading} />;

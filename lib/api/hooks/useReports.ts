@@ -3,6 +3,17 @@ import apiClient from '../client';
 import type { components } from '../schema';
 
 type WeeklyReport = components['schemas']['WeeklyReport'];
+type MonthlyReport = {
+  month?: string;
+  total_expense?: number;
+  total_lent?: number;
+  total_borrowed?: number;
+  category_breakdown?: Array<{
+    category_name?: string;
+    total?: number;
+  }>;
+  insight?: string;
+};
 
 interface ApiResponse<T> {
   success: boolean;
@@ -39,10 +50,10 @@ export const useMonthlyReport = (month: string) => {
   return useQuery({
     queryKey: ['reports', 'monthly', month],
     queryFn: async () => {
-      const { data: responseBody } = await apiClient.get<{MonthlyReport: components['schemas']['MonthlyReport']; Insight: string} | ApiResponse<{MonthlyReport: components['schemas']['MonthlyReport']; Insight: string}>>('/reports/monthly', {
+      const { data: responseBody } = await apiClient.get<{MonthlyReport: MonthlyReport; Insight: string} | ApiResponse<{MonthlyReport: MonthlyReport; Insight: string}>>('/reports/monthly', {
         params: { month },
       });
-      return extractData<{MonthlyReport: components['schemas']['MonthlyReport']; Insight: string}>(responseBody);
+      return extractData<{MonthlyReport: MonthlyReport; Insight: string}>(responseBody);
     },
     enabled: !!month,
   });
