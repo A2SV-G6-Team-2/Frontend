@@ -1,13 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Plus, Pencil, Trash2, Wallet, CreditCard, Check } from "lucide-react"
+import { Plus, Pencil, Wallet, CreditCard, Check } from "lucide-react"
 
 import {
   useDebts,
   useCreateDebt,
   useUpdateDebt,
-  useDeleteDebt,
   useMarkDebtPaid,
 } from "@/lib/api/hooks/useDebts"
 import { useProfile } from "@/lib/api/hooks/useUser"
@@ -55,7 +54,6 @@ export default function DebtPage() {
   const { data: debts = [] } = useDebts()
   const createDebt = useCreateDebt()
   const updateDebt = useUpdateDebt()
-  const deleteDebt = useDeleteDebt()
   const markDebtPaid = useMarkDebtPaid()
 
   /** MAP API → UI */
@@ -112,16 +110,6 @@ export default function DebtPage() {
 
  
   /** ACTIONS */
-
-  async function handleDelete(id: string) {
-    try {
-      setActionError("")
-      await deleteDebt.mutateAsync(id)
-    } catch (error: any) {
-      const message = error?.response?.data?.errors?.[0] || error?.response?.data?.message || "Could not delete debt."
-      setActionError(message)
-    }
-  }
 
   async function handleSaveEdit() {
     if (!editingDebt) return
@@ -211,51 +199,53 @@ export default function DebtPage() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="pt-8">
 
       {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-semibold">Debt Tracker</h1>
-        <p className="text-gray-500 text-sm">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Debt Tracker</h1>
+        <p className="mt-1 text-secondary text-sm">
           Keep track of money lent or borrowed between friends
         </p>
       </div>
 
       {/* CARDS */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-        <div className="bg-white rounded-xl shadow-sm p-5 flex justify-between items-start">
-          <div className="flex flex-col gap-2">
+        <div className="flex flex-col rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-start justify-between">
             <div className="w-8 h-8 rounded-md bg-green-100 flex items-center justify-center">
               <Wallet size={16} className="text-green-600"/>
             </div>
-            <p className="text-gray-500 text-sm">Total Lent</p>
-            <h2 className="text-xl font-semibold">${totalLent.toFixed(2)}</h2>
+            <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full">
+              {peopleOweYou} people owe you
+            </span>
           </div>
-
-          <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full">
-            {peopleOweYou} people owe you
-          </span>
+          <div className="flex flex-col gap-2">
+            <p className="text-gray-500 text-sm">Total Lent</p>
+            <h2 className="text-2xl font-bold text-gray-900">${totalLent.toFixed(2)}</h2>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-5 flex justify-between items-start">
-          <div className="flex flex-col gap-2">
+        <div className="flex flex-col rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-start justify-between">
             <div className="w-8 h-8 rounded-md bg-red-100 flex items-center justify-center">
               <CreditCard size={16} className="text-red-500"/>
             </div>
-            <p className="text-gray-500 text-sm">Total Borrowed</p>
-            <h2 className="text-xl font-semibold">${totalBorrowed.toFixed(2)}</h2>
+            <span className="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full">
+              You owe {youOwe} people
+            </span>
           </div>
-
-          <span className="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full">
-            You owe {youOwe} people
-          </span>
+          <div className="flex flex-col gap-2">
+            <p className="text-gray-500 text-sm">Total Borrowed</p>
+            <h2 className="text-2xl font-bold text-gray-900">${totalBorrowed.toFixed(2)}</h2>
+          </div>
         </div>
 
       </div>
 
       {/* TABS + ACTIONS */}
-      <div className="flex justify-between items-center">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
 
         <div className="flex gap-6 text-sm">
 
@@ -286,7 +276,7 @@ export default function DebtPage() {
         <div className="flex gap-3 items-center">
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 bg-[#3C12E7] text-white px-4 py-2 rounded-full"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/25 transition-colors hover:bg-accent/95"
           >
             <Plus size={16}/>
             Add Debt
@@ -302,7 +292,7 @@ export default function DebtPage() {
             {actionError}
           </div>
         )}
-        <div className="overflow-x-auto">
+      <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/90 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
@@ -348,14 +338,6 @@ export default function DebtPage() {
                           aria-label={`Edit ${d.name}`}
                         >
                           <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(d.id)}
-                          className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                          aria-label={`Delete ${d.name}`}
-                        >
-                          <Trash2 size={16} />
                         </button>
                         <button
                           type="button"

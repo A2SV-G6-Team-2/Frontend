@@ -55,5 +55,4 @@ export interface SpendingDashboardData {
   weeklyData: SpendingDataPoint[];
   monthlyData: SpendingDataPoint[];
   categories: CategoryBreakdown[];
-  insights: AIInsight[];
 }

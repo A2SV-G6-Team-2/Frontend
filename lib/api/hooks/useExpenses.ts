@@ -14,7 +14,11 @@ interface ApiResponse<T> {
 
 function extractData<T>(response: any): T {
   if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
-    return response.data.items as T;
+    const data = response.data;
+    if (data && typeof data === 'object' && 'items' in data) {
+      return data.items as T;
+    }
+    return data as T;
   }
   return response as T;
 }
@@ -24,7 +28,6 @@ export const useExpenses = (params?: { from_date?: string; to_date?: string; cat
     queryKey: ['expenses', params],
     queryFn: async () => {
       const { data: responseBody } = await apiClient.get<Expense[] | ApiResponse<Expense[]>>('/expenses', { params });
-      console.log(params);
       return extractData<Expense[]>(responseBody) || [];
     },
   });

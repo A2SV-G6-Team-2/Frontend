@@ -15,6 +15,7 @@ type ModalState = {
 };
 
 const frequencyOptions = ['Daily', 'Weekly', 'Monthly'] as const;
+const currencyOptions = ['USD', 'EUR', 'GBP', 'JPY', 'ETB'] as const;
 
 function IconBase({ children }: { children: React.ReactNode }) {
     return (
@@ -76,24 +77,6 @@ function CalendarIcon() {
                 fill="currentColor"
             />
         </svg>
-    );
-}
-
-function DeactivateCard({ onDeleteForever }: { onDeleteForever: () => void }) {
-    return (
-        <div className="bg-red-50 border border-red-300 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(255,56,56,0.35)] hover:border-red-500 hover:bg-[rgba(255,56,56,0.12)]">
-            <div className="text-red-600 font-semibold mb-1">Deactivate Account</div>
-            <div className="text-sm text-gray-500 mb-4">
-                This will permanently delete your expense data and linked bank accounts.
-            </div>
-            <button
-                type="button"
-                onClick={onDeleteForever}
-                className="bg-red-500 text-white px-5 py-2 rounded-lg hover:bg-red-600 hover:shadow-[0_0_20px_rgba(255,56,56,0.5)] transition-all duration-200"
-            >
-                Delete Forever
-            </button>
-        </div>
     );
 }
 
@@ -202,7 +185,6 @@ export default function SettingsPage() {
     const [email, setEmail] = useState(profile?.email ?? 'alex.j@university.edu');
     const [currency, setCurrency] = useState(profile?.default_currency ?? 'ETB');
     const [frequency, setFrequency] = useState<(typeof frequencyOptions)[number]>('Monthly');
-    const [profileImage, setProfileImage] = useState('/img/default-avatar.jpg');
     const [budgetAmount, setBudgetAmount] = useState('1250.00');
     const [startDate, setStartDate] = useState(new Date());
     const [calendarMonth, setCalendarMonth] = useState(new Date(startDate.getFullYear(), startDate.getMonth(), 1));
@@ -210,7 +192,6 @@ export default function SettingsPage() {
     const [newCategoryName, setNewCategoryName] = useState('');
 
     const [showYearMonthPicker, setShowYearMonthPicker] = useState(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
@@ -310,9 +291,10 @@ export default function SettingsPage() {
             if (!ok) return;
             setEmail(modal.value);
         } else if (modal.type === 'currency' && typeof modal.value === 'string') {
-            const ok = await saveProfileChanges({ default_currency: modal.value }, 'Default currency updated.');
+            const normalizedCurrency = modal.value.trim().toUpperCase();
+            const ok = await saveProfileChanges({ default_currency: normalizedCurrency }, 'Default currency updated.');
             if (!ok) return;
-            setCurrency(modal.value);
+            setCurrency(normalizedCurrency);
         } else if (modal.type === 'frequency' && typeof modal.value === 'string') {
             if (modal.value === 'Daily' || modal.value === 'Weekly' || modal.value === 'Monthly') {
                 const ok = await saveProfileChanges({ budget_frequency: modal.value }, 'Tracking period updated.');
@@ -363,27 +345,6 @@ export default function SettingsPage() {
             {/* Profile */}
             <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex justify-between items-center mb-8">
                 <div className="flex items-center gap-4">
-                    <div className="relative group w-14 h-14 rounded-full overflow-hidden">
-                        <img src={profileImage} alt={`${name} profile`} className="w-14 h-14 rounded-full object-cover" />
-                        <button
-                            type="button"
-                            onClick={() => document.getElementById('profileImageInput')?.click()}
-                            className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 text-white flex items-center justify-center transition"
-                            title="Change profile picture"
-                        >
-                            ✎
-                        </button>
-                        <input
-                            id="profileImageInput"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) setProfileImage(URL.createObjectURL(file));
-                            }}
-                        />
-                    </div>
                     <div>
                         <div className="flex items-center gap-2 font-semibold text-gray-900">
                             {name}
@@ -462,7 +423,6 @@ export default function SettingsPage() {
                         </div>
                     </Card>
 
-                    <DeactivateCard onDeleteForever={() => setShowDeleteConfirm(true)} />
                 </div>
             </div>
 
@@ -550,7 +510,7 @@ export default function SettingsPage() {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Default Currency</label>
                             <div className="grid grid-cols-2 gap-2">
-                                {['USD', 'EUR', 'GBP', 'JPY', 'BIRR', 'ETB'].map((curr) => {
+                                {currencyOptions.map((curr) => {
                                     const picked = modal.value === curr;
                                     return (
                                         <button
@@ -781,39 +741,6 @@ export default function SettingsPage() {
                 </div>
             </Modal>
 
-            <Modal
-                isOpen={showDeleteConfirm}
-                onClose={() => setShowDeleteConfirm(false)}
-                title="Delete Forever — Confirm"
-            >
-                <div className="space-y-4">
-                    <p className="text-sm font-semibold text-red-700">This action is permanent.</p>
-                    <p className="text-sm text-red-500">
-                        All of your SpendWise data will be irreversibly deleted, including expenses, budgets, reminders, and linked accounts. This cannot be undone.
-                    </p>
-                    <p className="text-xs text-red-600">You will lose all historical and future tracking data immediately.</p>
-                    <div className="flex justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setShowDeleteConfirm(false)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                // Design-only placeholder. Wire to your backend delete account flow when available.
-                                alert('Account deleted permanently. All data is lost.');
-                                setShowDeleteConfirm(false);
-                            }}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                        >
-                            Delete Forever
-                        </button>
-                    </div>
-                </div>
-            </Modal>
         </div>
     );
 }

@@ -170,7 +170,7 @@ const CategoryBreakdown = memo(({ activePeriod, setActivePeriod, className = "" 
       {/* Chart Area */}
       <div className="relative flex-1 w-full min-h-[350px]">
         {/* Center Total Text */}
-        {!isLoading && (
+        {!isLoading && chartData.length > 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 translate-y-[-10px]">
             <span className="text-xl font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
           </div>

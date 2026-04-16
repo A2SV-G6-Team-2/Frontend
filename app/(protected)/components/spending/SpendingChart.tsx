@@ -11,7 +11,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import type { SpendingDataPoint, TimeRange } from "@/types/spending";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +45,6 @@ export function SpendingChart({ weeklyData, monthlyData }: SpendingChartProps) {
               Monitor your daily cash flow
             </CardDescription>
           </div>
-
-          {/* Toggle */}
           <div className="flex items-center bg-gray-100 rounded-full p-1 gap-1">
             {(["weekly", "monthly"] as TimeRange[]).map((r) => (
               <button

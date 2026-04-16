@@ -14,6 +14,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "SpendWise",
   description: "Personal Expense & Social Debt Tracker",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

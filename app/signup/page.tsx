@@ -21,6 +21,7 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
@@ -48,6 +49,11 @@ export default function Signup() {
 
     if (!passwordIsValid) {
       setError("Please fix the password requirements below.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
@@ -266,6 +272,31 @@ export default function Signup() {
                 ))}
               </div>
             )}
+
+            {/* Confirm Password */}
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Confirm Password
+              </label>
+              <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 gap-2 focus-within:border-[#3C12E7] transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <input
+                  id="signup-confirm-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Re-enter your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="flex-1 text-sm outline-none text-gray-700 placeholder:text-gray-400 bg-transparent disabled:opacity-50"
+                />
+              </div>
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <p className="mt-1 px-1 text-[11px] text-red-500">Passwords do not match.</p>
+              )}
+            </div>
 
             {/* Static hint when password is empty */}
             {password.length === 0 && (

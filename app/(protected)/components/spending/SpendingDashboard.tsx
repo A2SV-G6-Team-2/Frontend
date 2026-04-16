@@ -5,7 +5,6 @@ import {
   StatsRow,
   SpendingChart,
   CategoryBreakdownPanel,
-  AIInsightsPanel,
 } from '@/app/(protected)/components/spending';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -18,13 +17,13 @@ export function SpendingDashboard({ data, isLoading }: SpendingDashboardProps) {
   if (isLoading) return <DashboardSkeleton />;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-2 sm:p-6 lg:p-8">
-      <div className="sm:max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+    <div className="pt-8">
+      <div className="space-y-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
             Spending Trends
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="mt-1 text-secondary text-sm">
             Keep track of your daily cash flows and habits
           </p>
         </div>
@@ -36,15 +35,14 @@ export function SpendingDashboard({ data, isLoading }: SpendingDashboardProps) {
           />
           <CategoryBreakdownPanel categories={data.categories} />
         </div>
-        <AIInsightsPanel insights={data.insights} />
       </div>
     </div>
   );
 }
 function DashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="pt-8">
+      <div className="space-y-6">
         <div>
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-4 w-48 mt-2" />

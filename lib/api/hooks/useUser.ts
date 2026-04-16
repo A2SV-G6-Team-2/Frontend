@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../client';
 import type { components } from '../schema';
-import { getAccessToken, setTokens, setUser, clearSession } from '@/lib/auth/token';
+import { getAccessToken, getUser, setTokens, setUser, clearSession } from '@/lib/auth/token';
 
 type User = components['schemas']['User'];
 type LoginInput = components['schemas']['LoginInput'];
@@ -31,8 +31,19 @@ export const useProfile = () => {
   return useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
+      const token = getAccessToken();
+      const storedUser = getUser();
       const devUser = process.env.NEXT_PUBLIC_DEV_USER;
-      if (!getAccessToken() && devUser) {
+      const devToken = process.env.NEXT_PUBLIC_DEV_TOKEN;
+
+      // When token is unavailable, fall back to locally stored user first.
+      if (!token) {
+        if (storedUser) {
+          return storedUser as unknown as User;
+        }
+      }
+
+      if (!token && !devToken && devUser) {
         try {
           return JSON.parse(devUser) as User;
         } catch (e) {
@@ -41,9 +52,13 @@ export const useProfile = () => {
       }
       
       const { data: responseBody } = await apiClient.get<User | ApiResponse<User>>('/user/profile');
-      return extractData<User>(responseBody);
+      const profile = extractData<User>(responseBody);
+      if (profile) {
+        setUser(profile as any);
+      }
+      return profile;
     },
-    enabled: !!getAccessToken() || !!process.env.NEXT_PUBLIC_DEV_TOKEN,
+    enabled: !!getAccessToken() || !!getUser() || !!process.env.NEXT_PUBLIC_DEV_TOKEN || !!process.env.NEXT_PUBLIC_DEV_USER,
   });
 };
 
@@ -107,12 +122,24 @@ export const useUpdateProfile = () => {
     },
     onSuccess: (_data, variables) => {
       queryClient.setQueryData<User | undefined>(['profile'], (prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
+        const base = prev ?? (getUser() as unknown as User | null) ?? undefined;
+        if (!base) return prev;
+        const next = {
+          ...base,
           ...variables,
         };
+        const stored = getUser();
+        if (stored) {
+          setUser({
+            ...stored,
+            ...variables,
+          });
+        }
+        return {
+          ...next,
+        };
       });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });
 };

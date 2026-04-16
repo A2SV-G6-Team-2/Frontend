@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from "next/navigation";
 import Icon from '@/components/icon'
 import { useLogout } from '@/lib/api/hooks/useUser';
+import { useProfile } from '@/lib/api/hooks/useUser';
 
 function NavElement({ title, icon, isActive = false, link, onClick }: { title: string, icon: string, isActive?: boolean, link: string, onClick?: () => void }) {
     if (isActive) {
@@ -39,6 +40,8 @@ function NavElement({ title, icon, isActive = false, link, onClick }: { title: s
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const pathname = usePathname();
     const logout = useLogout();
+    const { data: profile } = useProfile();
+    const userName = profile?.name?.trim() || 'Username';
 
     return (
         <div className={`
@@ -72,18 +75,8 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean, onClose:
             <div className="flex-1" />
 
             <div className="flex items-center gap-4 bg-white p-2 mt-auto pt-4 lg:pt-0">
-                <div className="w-10 h-10 shrink-0 rounded-full overflow-hidden flex items-center justify-center">
-                    <Image
-                        src="/img/default-avatar.jpg"
-                        alt="Username"
-                        className="w-full h-full object-cover"
-                        width={40}
-                        height={40}
-                    />
-                </div>
-
                 <div className="flex flex-col flex-1 min-w-0">
-                    <h2 className="text-sm font-bold text-black truncate leading-tight tracking-tight">Username</h2>
+                    <h2 className="text-sm font-bold text-black truncate leading-tight tracking-tight">{userName}</h2>
                     <span className="text-xs text-gray-500 truncate leading-snug">Free Plan</span>
                 </div>
 
